@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Folder Explorer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f8ff;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 3em;
+      color: #ff6347;
+    }
+
+    .folder-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .folder-box {
+      background-color: #ffcccb;
+      width: 150px;
+      height: 150px;
+      border-radius: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease;
+    }
+
+    .folder-box:hover {
+      transform: scale(1.1);
+    }
+
+    .folder-icon {
+      font-size: 3em;
+    }
+
+    .folder-name {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #333;
+      margin-top: 10px;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Folder Explorer</h1>
+  <div class="folder-container" id="folderContainer">
+    <!-- Folder boxes will be generated here -->
+  </div>
+
+  <script>
+    // List of folders and paths relative to the repository root
+    const folders = [
+      { name: "Letters PPT", path: "katrinaLetterPPT/index.html" }
+    ];
+
+    // Get the folder container
+    const folderContainer = document.getElementById('folderContainer');
+
+    // Function to create a clickable folder box
+    function createFolderBox(folder) {
+      // Create a div for the folder box
+      const folderBox = document.createElement('div');
+      folderBox.classList.add('folder-box');
+
+      // Create a link inside the folder box
+      const link = document.createElement('a');
+      link.href = folder.path; // Link to the folder's index.html or relevant HTML file
+
+      // Create an icon for the folder
+      const folderIcon = document.createElement('div');
+      folderIcon.classList.add('folder-icon');
+      folderIcon.innerHTML = '📁'; // Folder emoji icon
+
+      // Create a label for the folder name
+      const folderName = document.createElement('div');
+      folderName.classList.add('folder-name');
+      folderName.textContent = folder.name;
+
+      // Append the icon and name to the link
+      link.appendChild(folderIcon);
+      link.appendChild(folderName);
+
+      // Add the link to the folder box
+      folderBox.appendChild(link);
+
+      // Add the folder box to the folder container
+      folderContainer.appendChild(folderBox);
+    }
+
+    // Loop through folders and create a folder box for each
+    folders.forEach(folder => {
+      createFolderBox(folder);
+    });
+  </script>
+
+</body>
+</html>
