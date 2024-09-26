@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word to Image Table</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #fff9db; /* Light pastel background */
+        color: #333; /* Dark text for better contrast */
+    }
+    table {
+        margin: 20px auto;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    td {
+        padding: 20px;
+        border: 1px solid #ccc;
+        width: 250px;  /* Increased width */
+        height: 200px; /* Increased height */
+        cursor: pointer;
+        font-size: 24px;  /* Larger font size for words */
+        vertical-align: top;
+        position: relative;
+        background-color: #e6f7ff; /* Light pastel blue background for table cells */
+        color: #333;
+    }
+    td img {
+        display: block;
+        margin: 10px auto;
+        max-width: 150px;  /* Adjusted image size */
+        max-height: 150px;
+    }
+    #alphabetBar {
+        margin: 20px;
+    }
+    .letter {
+        margin: 10px;
+        padding: 15px;
+        border: 2px solid #ccc;
+        display: inline-block;
+        cursor: pointer;
+        font-size: 28px; /* Larger font size for letters */
+        background-color: #ffe6e6; /* Light pastel pink for letters */
+        color: #333; /* Dark text for better contrast */
+    }
+</style>
+</head>
+<body>
+
+<h1>Word to Image Table</h1>
+
+<table id="wordTable">
+    <!-- The table cells will be dynamically populated here -->
+</table>
+
+<div id="alphabetBar">
+    <!-- Alphabet letters will be dynamically populated here -->
+</div>
+
+<script>
+    // Word data organized by letter
+// Image data array containing words and their associated image URLs
+const imageData = {  
+    // Other words and their corresponding URLs can be added here
+};
+
+const wordData = {
+    'A': ['Anġlu', 'Arloġġ', 'Ajkla', 'Astronawta'],
+    'B': ['Barmil', 'Ballun', 'Banana', 'Baskett'],
+    'Ċ': ['Ċoff', 'Ċikkulata', 'Ċinturin', 'Ċavetta'],
+    'D': ['Dar', 'Denfil', 'Dragun', 'Dublett'],
+    'E': ['Erbgħa', 'Ewro', 'Eroj', 'Elmu'],
+    'F': ['Fjura', 'Fenek', 'Fekruna', 'Farfett'],
+    'Ġ': ['Ġurat', 'Ġewż', 'Ġurdien', 'Ġardina'],
+    'G': ['Griż', 'Gomma', 'Gidi', 'Granċ'],
+    'H': ['Hawn', 'Hemm', 'Hena', 'Xahar'],
+    'Ħ': ['Ħanżir', 'Ħuta', 'Ħabel', 'Ħobż'],
+    'I': ['Ilma', 'Inka', 'Inkwatru', 'Infermiera'],
+    'IE': ['Ieqaf', 'Iebes', 'Ħbieb', 'Milied'],
+    'J': ['Jiraffa', '', '', ''],
+    'K': ['Kelb', 'Ktieb', 'Kejk', 'Kukkudril'],
+    'L': ['Lapes', 'Lampa', 'Libsa', 'Larinġa'],
+    'M': ['Mera', 'Mejda', 'Maskra', 'Mogħża'],
+    'N': ['Nar', 'Nemla', 'Naħla', 'Nagħġa'],
+    'O': ['Ors', 'Oranġjo', 'Orgni', 'Organu'],
+    'P': ['Papra', 'Pustier', 'Purtieri', 'Puluzija'],
+    'Q': ['Qalb', 'Qamar', 'Qattus', 'Qarnita'],
+    'R': ['Rota', 'Ross', 'Riga', 'Reġina'],
+    'S': ['Serp', 'Siġra', 'Sodda', 'Stilla'],
+    'T': ['Tifel', 'Tifla', 'Tigra', 'Tieqa'],
+    'U': ['Umbrella', 'Uniformi', 'Uva', ''],
+    'V': ['Vann', 'Vapur', 'Vjolin', 'Vażun'],
+    'W': ['Wieħed', 'Warda', 'Widnejn', 'Werżieq'],
+    'X': ['Xemx', 'Xita', 'Xadina', 'Xugaman'],
+    'Ż': ['Żiemel', 'Żarbun', 'Żrinġ', 'Żunżana'],
+    'Z': ['Zalza', 'Zokkor', 'Zalzett', 'Zunnarija']
+};
+
+    // Function to initialize the alphabet bar with letters from wordData
+    function populateAlphabetBar() {
+        const alphabetBar = document.getElementById('alphabetBar');
+        alphabetBar.innerHTML = ''; // Clear the bar first
+        for (let letter in wordData) {
+            const letterDiv = document.createElement('div');
+            letterDiv.className = 'letter';
+            letterDiv.textContent = letter;
+            letterDiv.onclick = () => changeWords(letter);
+            alphabetBar.appendChild(letterDiv);
+        }
+    }
+
+// Function to toggle between word and image
+function toggleWordImage(td) {
+    const word = td.getAttribute('data-word');
+    const imgTag = td.querySelector('img');
+    
+    // If an image is already shown, remove it
+    if (imgTag) {
+        imgTag.remove();
+    } else {
+        const imgElement = document.createElement('img');
+        let imageUrl;
+
+        // Check if the word exists in imageData, else fallback to file system
+        if (imageData[word]) {
+            imageUrl = imageData[word];  // Load image from URL in imageData
+        } else {
+            imageUrl = `images/${word}.png`;  // Fallback to file system image
+        }
+
+        imgElement.src = imageUrl;
+        imgElement.alt = word;
+
+        // Add the image element to the table cell
+        td.appendChild(imgElement);
+    }
+}
+
+    // Function to change words based on selected letter
+    function changeWords(letter) {
+        const wordTable = document.getElementById('wordTable');
+        const words = wordData[letter];
+
+        // Clear existing table content
+        wordTable.innerHTML = '';
+
+        // Create two rows, each containing two table cells
+        const row1 = document.createElement('tr');
+        const row2 = document.createElement('tr');
+
+        // Add the first two words to the first row
+        for (let i = 0; i < 2; i++) {
+            const td = document.createElement('td');
+            td.textContent = words[i];
+            td.setAttribute('data-word', words[i]);  // Set word as data attribute for toggling
+            td.onclick = () => toggleWordImage(td); // Attach onclick event to toggle image
+            row1.appendChild(td);
+        }
+
+        // Add the next two words to the second row
+        for (let i = 2; i < 4; i++) {
+            const td = document.createElement('td');
+            td.textContent = words[i];
+            td.setAttribute('data-word', words[i]);  // Set word as data attribute for toggling
+            td.onclick = () => toggleWordImage(td); // Attach onclick event to toggle image
+            row2.appendChild(td);
+        }
+
+        // Append the new rows to the table
+        wordTable.appendChild(row1);
+        wordTable.appendChild(row2);
+    }
+
+    // Initialize the alphabet bar and load the first set of words (for 'A')
+    populateAlphabetBar();
+    changeWords('A'); // Default to 'A' on page load
+</script>
+
+</body>
+</html>
