@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snakes & Ladders Game</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #game-board {
+      background: url('./snakes&LaddersOnlineSecurityCropped.JPG') no-repeat center center;
+      background-size: contain;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .player {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      cursor: grab;
+    }
+
+    .player-1 { background: red; }
+    .player-2 { background: blue; }
+    .player-3 { background: green; }
+    .player-4 { background: yellow; }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+    }
+
+    #dice-roll, #add-player {
+      margin: 5px;
+      padding: 10px;
+      cursor: pointer;
+      background-color: white;
+      border: 2px solid black;
+      border-radius: 5px;
+    }
+
+    #dice-roll:hover, #add-player:hover {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="dice-roll">Roll Dice</button>
+    <button id="add-player">Add Player</button>
+  </div>
+
+  <div id="game-board"></div>
+
+  <script>
+    // Game Variables
+    const gameBoard = document.getElementById('game-board');
+    const diceRollButton = document.getElementById('dice-roll');
+    const addPlayerButton = document.getElementById('add-player');
+    let players = [];
+    let playerCount = 4;
+
+    // Function to Create a Player Avatar
+    function createPlayer(index) {
+      const player = document.createElement('div');
+      player.classList.add('player', `player-${index}`);
+      player.dataset.playerIndex = index;
+
+      // Set initial position for new players
+      const initialPosition = 90 - (index * 10);
+      player.style.top = `${initialPosition}%`;
+      player.style.left = '5%';
+
+      // Add player number
+      player.innerText = index;
+
+      // Make the player draggable
+      player.draggable = true;
+      player.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('playerIndex', index);
+      });
+
+      // Add to game board
+      gameBoard.appendChild(player);
+      players.push(player);
+    }
+
+    // Initialize Players
+    for (let i = 1; i <= playerCount; i++) {
+      createPlayer(i);
+    }
+
+    // Dice Roll Functionality
+    diceRollButton.addEventListener('click', () => {
+      const diceRoll = Math.floor(Math.random() * 6) + 1;
+      alert(`Dice rolled: ${diceRoll}`);
+      // Movement logic to be implemented
+    });
+
+    // Add Player Button Functionality
+    addPlayerButton.addEventListener('click', () => {
+      playerCount += 1;
+      createPlayer(playerCount);
+    });
+
+    // Drag and Drop Functionality
+    gameBoard.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    gameBoard.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const playerIndex = e.dataTransfer.getData('playerIndex');
+      const player = players[playerIndex - 1];
+
+      // Update player position
+      const rect = gameBoard.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      player.style.left = `${x}px`;
+      player.style.top = `${y}px`;
+    });
+  </script>
+</body>
+</html>

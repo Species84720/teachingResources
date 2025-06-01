@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Snakes & Ladders</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #game-board {
+      background: url('./snakes&LaddersOnlineSecurityCropped.JPG') no-repeat center center;
+      background-size: contain;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .player {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      cursor: grab;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+    }
+
+    #add-player, #dice-roll {
+      margin: 5px;
+      padding: 10px;
+      cursor: pointer;
+      background-color: white;
+      border: 2px solid black;
+      border-radius: 5px;
+    }
+
+    #add-player:hover, #dice-roll:hover {
+      background-color: #f0f0f0;
+    }
+
+    .box {
+      position: absolute;
+      cursor: pointer;
+      border: 2px solid transparent; /* Add border for debugging */
+    }
+
+    /* Example for two boxes (You can define more based on your grid) */
+    .box-1 { top: 85%; left: 5%; width: 10%; height: 10%; } /* Box 1 */
+    .box-2 { top: 10%; left: 70%; width: 15%; height: 15%; } /* Box 2 */
+    .box-3 { top: 85%; left: 5%; width: 10%; height: 10%; }
+    .box-4 { top: 10%; left: 70%; width: 15%; height: 15%; }
+    .box-5 { top: 85%; left: 5%; width: 10%; height: 10%; }
+    .box-6 { top: 10%; left: 70%; width: 15%; height: 15%; }
+    .box-7 { top: 85%; left: 5%; width: 10%; height: 10%; }
+    .box-8 { top: 10%; left: 70%; width: 15%; height: 15%; }
+    .box-9 { top: 85%; left: 5%; width: 10%; height: 10%; }
+    .box-10 { top: 10%; left: 70%; width: 15%; height: 15%; }
+
+    /* Popup Styling */
+    #popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #popup-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      position: relative;
+      max-width: 80%;
+      max-height: 80%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #popup-content img {
+        max-width: 80vw;
+        max-height: 80vh;
+    }
+
+    #close-popup {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+      background: red;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 16px;
+    }
+
+    #close-popup:hover {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="add-player">Add Player</button>
+    <button id="dice-roll">Roll Dice</button>
+  </div>
+
+  <div id="game-board">
+    <!-- Define clickable boxes -->
+    <div class="box box-1" data-info="./info1.png" data-coords="19.75,0.5,19.75,33"></div>
+    <div class="box box-2" data-info="./info2.png" data-coords="40,0.5,19.75,33"></div>
+    <div class="box box-3" data-info="./info3.png" data-coords="60,0.5,19.75,33"></div>
+    <div class="box box-4" data-info="./info4.png" data-coords="0,33.5,19.75,33"></div>
+    <div class="box box-5" data-info="./info5.png" data-coords="40,33.5,19.75,33"></div>
+    <div class="box box-6" data-info="./info6.png" data-coords="60,33.5,19.75,33"></div>
+    <div class="box box-7" data-info="./info7.png" data-coords="79.75,33.5,19.75,33"></div>
+    <div class="box box-8" data-info="./info8.png" data-coords="0,66.5,19.75,33"></div>
+    <div class="box box-9" data-info="./info9.png" data-coords="19.75,66.5,19.75,33"></div>
+    <div class="box box-10" data-info="./info10.png" data-coords="60,66.5,19.75,33"></div>
+  </div>
+
+  <!-- Popup -->
+  <div id="popup-overlay">
+    <div id="popup-content">
+      <button id="close-popup">Close</button>
+      <img id="popup-image" src="" alt="Information">
+    </div>
+  </div>
+
+  <script>
+    // Select elements
+    const boxes = document.querySelectorAll('.box');
+    const popupOverlay = document.getElementById('popup-overlay');
+    const popupImage = document.getElementById('popup-image');
+    const closePopupButton = document.getElementById('close-popup');
+    const gameBoard = document.getElementById('game-board');
+    const addPlayerButton = document.getElementById('add-player');
+    const diceRollButton = document.getElementById('dice-roll');
+
+    // Define the natural dimensions of the background image (adjust if known)
+    const imageNaturalWidth = 1322; // Replace with the actual natural width of your image
+    const imageNaturalHeight = 797; // Replace with the actual natural height of your image
+
+    // Function to update box positions based on the constrained size of the image
+    function updateBoxPositions() {
+      const boardRect = gameBoard.getBoundingClientRect();
+      const boardWidth = boardRect.width;
+      const boardHeight = boardRect.height;
+
+      // Calculate the natural aspect ratio of the image
+      const imageAspectRatio = imageNaturalWidth / imageNaturalHeight;
+      const boardAspectRatio = boardWidth / boardHeight;
+
+      // Determine if width or height is the constraining dimension
+      let constrainedWidth, constrainedHeight, offsetX, offsetY;
+
+      if (boardAspectRatio > imageAspectRatio) {
+        // Height is constraining
+        constrainedHeight = boardHeight;
+        constrainedWidth = constrainedHeight * imageAspectRatio;
+        offsetX = (boardWidth - constrainedWidth) / 2;
+        offsetY = 0;
+      } else {
+        // Width is constraining
+        constrainedWidth = boardWidth;
+        constrainedHeight = constrainedWidth / imageAspectRatio;
+        offsetX = 0;
+        offsetY = (boardHeight - constrainedHeight) / 2;
+      }
+
+      // Update each box's position and size
+      boxes.forEach(box => {
+        const coords = box.dataset.coords.split(',').map(parseFloat); // [x, y, width, height]
+        const [xPercent, yPercent, widthPercent, heightPercent] = coords;
+
+        // Calculate box position and size relative to the constrained dimensions
+        box.style.left = `${offsetX + (xPercent / 100) * constrainedWidth}px`;
+        box.style.top = `${offsetY + (yPercent / 100) * constrainedHeight}px`;
+        box.style.width = `${(widthPercent / 100) * constrainedWidth}px`;
+        box.style.height = `${(heightPercent / 100) * constrainedHeight}px`;
+      });
+    }
+
+    // Run on window resize to adjust box positions
+    window.addEventListener('resize', updateBoxPositions);
+
+    // Initial positioning
+    updateBoxPositions();
+
+    // Game Variables
+    let players = [];
+    let playerCount = 0;
+    const playerColors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'pink'];
+
+    // Add click event to each box for popup
+    boxes.forEach(box => {
+      box.addEventListener('click', () => {
+        const infoImage = box.dataset.info; // Get the info PNG from data attribute
+        popupImage.src = infoImage; // Set the popup image source
+        popupOverlay.style.display = 'flex'; // Show the popup
+      });
+    });
+
+    // Close popup functionality
+    closePopupButton.addEventListener('click', () => {
+      popupOverlay.style.display = 'none'; // Hide the popup
+    });
+
+    // Optional: Close popup when clicking outside the content
+    popupOverlay.addEventListener('click', (e) => {
+      if (e.target === popupOverlay) {
+        popupOverlay.style.display = 'none'; // Hide the popup
+      }
+    });
+
+    // Function to create a new player
+    function createPlayer() {
+        playerCount++;
+        var index = playerCount;
+
+        const player = document.createElement('div');
+        player.classList.add('player');
+        const colorIndex = (index - 1) % playerColors.length; // Cycle through colors
+        player.style.backgroundColor = playerColors[colorIndex];
+        player.style.top = `${90 - index * 10}%`; // Offset initial position for each player
+        player.style.left = '5%';
+        player.dataset.playerIndex = index;
+        player.textContent = index; // Add player number
+
+        // Make draggable (optional for future functionality)
+        player.draggable = true;
+
+        // Make the player draggable
+        player.draggable = true;
+        player.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('playerIndex', index);
+        });
+
+        gameBoard.appendChild(player);
+        players.push(player);
+    }
+
+    // Add new player on button click
+    addPlayerButton.addEventListener('click', () => {
+      createPlayer();
+    });
+
+    // Dice Roll Functionality
+    diceRollButton.addEventListener('click', () => {
+    const diceRoll = Math.floor(Math.random() * 6) + 1;
+    alert(`Dice rolled: ${diceRoll}`);
+    // Movement logic to be implemented
+    });
+
+    // Drag and Drop Functionality
+    gameBoard.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
+
+    gameBoard.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const playerIndex = e.dataTransfer.getData('playerIndex');
+    const player = players[playerIndex - 1];
+
+    // Update player position
+    const rect = gameBoard.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    player.style.left = `${x}px`;
+    player.style.top = `${y}px`;
+    });
+  </script>
+</body>
+</html>
