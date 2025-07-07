@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Interactive Image Blackout</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #111;
+      overflow: hidden;
+      font-family: sans-serif;
+      color: white;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+    }
+
+    #controls input[type="file"],
+    #controls button {
+      font-size: 1rem;
+      margin: 5px;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="controls">
+    <input type="file" id="imageInput" accept="image/*" />
+    <button id="toggleReveal" disabled>Reveal Full Image</button>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const imageInput = document.getElementById("imageInput");
+    const toggleRevealBtn = document.getElementById("toggleReveal");
+
+    let img = new Image();
+    let imgLoaded = false;
+
+    let revealX = window.innerWidth / 2;
+    let revealY = window.innerHeight / 2;
+    let revealRadius = 100;
+
+    let dragging = false;
+    let showAll = false;
+
+    let imgDrawWidth = 0;
+    let imgDrawHeight = 0;
+    let imgOffsetX = 0;
+    let imgOffsetY = 0;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      if (imgLoaded) {
+        scaleImage();
+        draw();
+      }
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    imageInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          img.onload = () => {
+            imgLoaded = true;
+            showAll = false;
+            toggleRevealBtn.disabled = false;
+            scaleImage();
+            draw();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    toggleRevealBtn.addEventListener("click", () => {
+      showAll = !showAll;
+      toggleRevealBtn.textContent = showAll ? "Hide Again" : "Reveal Full Image";
+      draw();
+    });
+
+    canvas.addEventListener("mousedown", (e) => {
+      dragging = true;
+      moveCircle(e);
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (dragging) {
+        moveCircle(e);
+      }
+    });
+
+    canvas.addEventListener("mouseup", () => {
+      dragging = false;
+    });
+
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const delta = Math.sign(e.deltaY);
+      revealRadius -= delta * 10;
+      revealRadius = Math.max(20, Math.min(revealRadius, canvas.height));
+      draw();
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        revealX = touch.clientX - rect.left;
+        revealY = touch.clientY - rect.top;
+        draw();
+      }
+    }, { passive: false });
+
+    function moveCircle(e) {
+      const rect = canvas.getBoundingClientRect();
+      revealX = e.clientX - rect.left;
+      revealY = e.clientY - rect.top;
+      draw();
+    }
+
+    function scaleImage() {
+      // Fit image to full height, maintain aspect ratio
+      imgDrawHeight = canvas.height;
+      imgDrawWidth = (img.width / img.height) * canvas.height;
+
+      // Center horizontally
+      imgOffsetX = (canvas.width - imgDrawWidth) / 2;
+      imgOffsetY = 0;
+    }
+
+    function draw() {
+      if (!imgLoaded) return;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw scaled image
+      ctx.drawImage(img, imgOffsetX, imgOffsetY, imgDrawWidth, imgDrawHeight);
+
+      if (!showAll) {
+        // Draw full blackout
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Reveal circular area
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(revealX, revealY, revealRadius, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(img, imgOffsetX, imgOffsetY, imgDrawWidth, imgDrawHeight);
+        ctx.restore();
+      }
+    }
+  </script>
+</body>
+</html>
