@@ -416,13 +416,8 @@
         template.labels.forEach((labelData) => {
           const dropZone = document.createElement("div");
           dropZone.className = "dropzone";
-
-          // Convert % to px using canvasContainer
-          const x = labelData.x * imgDrawWidth + imgOffsetX;
-          const y = labelData.y * imgDrawHeight + imgOffsetY;
-
-          dropZone.style.left = `${x}px`;
-          dropZone.style.top = `${y}px`;
+          dropZone.style.left = `${labelData.x}px`;
+          dropZone.style.top = `${labelData.y}px`;
           dropZone.dataset.correctLabel = labelData.text;
 
           dropZone.addEventListener("dragover", (e) => e.preventDefault());
@@ -457,16 +452,11 @@
         if (editMode) {
           const labelText = e.dataTransfer.getData("text/plain");
 
-          const rect = canvas.getBoundingClientRect();
-          const canvasX = e.clientX - canvas.getBoundingClientRect().left;
-          const canvasY = e.clientY - canvas.getBoundingClientRect().top;
+          // Get position relative to canvas
+          const x = e.clientX - canvas.getBoundingClientRect().left;
+          const y = e.clientY - canvas.getBoundingClientRect().top;
 
-          const xPercent = (canvasX - imgOffsetX) / imgDrawWidth;
-          const yPercent = (canvasY - imgOffsetY) / imgDrawHeight;
-
-          const x = xPercent * imgDrawWidth + imgOffsetX;
-          const y = yPercent * imgDrawHeight + imgOffsetY;
-
+          // Create the placed label
           const div = document.createElement("div");
           div.className = "label placed";
           div.textContent = labelText;
@@ -474,12 +464,15 @@
           div.style.top = `${y}px`;
           div.style.position = "absolute";
 
+          // When clicked, return it to the sidebar
           div.addEventListener("click", () => {
             div.remove();
             addLabelToSidebar(labelText);
           });
 
           canvasContainer.appendChild(div);
+
+          // Remove original label from sidebar
           removeLabelFromSidebar(labelText);
         }
       });
@@ -548,21 +541,14 @@
           return;
         }
 
-        const labels = Array.from(document.querySelectorAll(".label.placed")).map(label => {
-          const labelX = parseFloat(label.style.left);
-          const labelY = parseFloat(label.style.top);
+        // Get label data
+        const labels = Array.from(document.querySelectorAll(".label.placed")).map(label => ({
+          text: label.textContent,
+          x: parseFloat(label.style.left),
+          y: parseFloat(label.style.top)
+        }));
 
-          // Convert canvas coords to image-relative percentages
-          const xPercent = (labelX - imgOffsetX) / imgDrawWidth;
-          const yPercent = (labelY - imgOffsetY) / imgDrawHeight;
-
-          return {
-            text: label.textContent,
-            x: xPercent,
-            y: yPercent
-          };
-        });
-
+        // Create base64 from image
         const offscreenCanvas = document.createElement("canvas");
         offscreenCanvas.width = img.width;
         offscreenCanvas.height = img.height;
@@ -575,14 +561,14 @@
           labels: labels
         };
 
-        const blob = new Blob([JSON.stringify(template, null, 2)], {
-          type: "application/json"
-        });
+        const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
+
         const a = document.createElement("a");
         a.href = url;
         a.download = "template.json";
         a.click();
+
         URL.revokeObjectURL(url);
       });
     </script>
