@@ -1,0 +1,135 @@
+<html>
+<head>
+    <style>
+        table, th, td {
+            font-size: 45px;
+            border: 1px solid;
+            padding: 5px 10px;
+            min-width: 90px;
+            min-height: 90px;
+            text-align: center;
+        }
+        th {
+            font-size: 50px;
+        }
+        .word {
+            font-size: 15px;
+        }
+        @media print {
+            .pagebreak { page-break-before: always; }
+            #controls { display: none; }
+        }
+        .image {
+            width: 150px;
+        }
+        .sheet {
+            margin-bottom: 20px;
+            display: inline-block;
+            vertical-align: top;
+        }
+        .sheet-container {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <h2>Upload Images for Bingo</h2>
+        <input type="file" id="imageLoader" multiple accept="image/*"><br><br>
+
+        <label>Number of Bingo Sheets: </label>
+        <input type="number" id="numSheets" value="5" min="1"><br><br>
+
+        <label>Grid Size (rows × columns): </label>
+        <input type="number" id="rows" value="3" min="1"> × 
+        <input type="number" id="cols" value="3" min="1"><br><br>
+
+        <button onclick="generateBingo()">Generate Bingo</button>
+        <button onclick="window.print()">Print Bingo Sheets</button>
+        <hr>
+    </div>
+
+    <div id="table"></div>
+
+    <script>
+        let loadedImages = [];
+
+        document.getElementById("imageLoader").addEventListener("change", function(event) {
+            loadedImages = [];
+            for (let file of event.target.files) {
+                let url = URL.createObjectURL(file);
+                let name = file.name.replace(/\.[^/.]+$/, "");
+                loadedImages.push({ name, url });
+            }
+            alert(loadedImages.length + " images loaded.");
+        });
+
+        function shuffleArray(arr) {
+            let array = arr.slice();
+            for (let i = array.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function generateBingo() {
+            let numSheets = parseInt(document.getElementById("numSheets").value);
+            let rows = parseInt(document.getElementById("rows").value);
+            let cols = parseInt(document.getElementById("cols").value);
+            let boxesPerSheet = rows * cols;
+
+            if (loadedImages.length < boxesPerSheet) {
+                alert("You need at least " + boxesPerSheet + " images to make one sheet!");
+                return;
+            }
+
+            let container = document.getElementById("table");
+            container.innerHTML = ""; // clear previous
+
+            // Create each sheet first
+            let sheets = [];
+            for (let sheet = 0; sheet < numSheets; sheet++) {
+                let shuffled = shuffleArray(loadedImages).slice(0, boxesPerSheet);
+
+                let html = "<div class='sheet'><table><tbody>";
+                let index = 0;
+                for (let r = 0; r < rows; r++) {
+                    html += "<tr>";
+                    for (let c = 0; c < cols; c++) {
+                        let img = shuffled[index++];
+                        html += `<td style="font-family: Comic Sans MS; font-size: 30">
+                                    <img class="image" src="${img.url}"><br>${img.name}
+                                 </td>`;
+                    }
+                    html += "</tr>";
+                }
+                html += "</tbody></table></div>";
+                sheets.push(html);
+            }
+
+            // Temporary inject to measure
+            container.innerHTML = sheets.join("");
+            let sheetElems = container.querySelectorAll(".sheet");
+            let singleHeight = sheetElems[0].offsetHeight;
+
+            // Assume printable page height ~1050px (Letter portrait)
+            let pageHeight = 1050;
+
+            container.innerHTML = ""; // clear again for final layout
+            if (singleHeight * 2 < pageHeight) {
+                // Two per page
+                for (let i = 0; i < sheets.length; i += 2) {
+                    container.innerHTML += `<div class="sheet-container">${sheets[i] || ""}${sheets[i+1] || ""}</div><div class="pagebreak"></div>`;
+                }
+            } else {
+                // One per page
+                for (let i = 0; i < sheets.length; i++) {
+                    container.innerHTML += `<div class="sheet-container">${sheets[i]}</div><div class="pagebreak"></div>`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
