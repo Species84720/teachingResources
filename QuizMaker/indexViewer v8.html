@@ -11,9 +11,10 @@
     button{border:none;padding:16px 24px;border-radius:12px;font-size:1.2rem;cursor:pointer;margin:8px}
     button.label{background:#0b79d0;color:#fff;transition:background 0.2s}
     button.label.selected{background:#4fb3f6;color:#fff}
-  button.nav{background:#0b79d0;color:#fff}   /* navigation buttons */
-  #nextBtn { display: none; }
-
+    button.label.correct{background:#49ff49;color:#fff}
+    button.label.incorrect{background:#ff4f4f;color:#fff}
+    button.nav{background:#0b79d0;color:#fff}   /* navigation buttons */
+    #nextBtn { display: none; }
     .progress{font-size:1rem;margin-bottom:8px}
   </style>
 </head>
@@ -102,11 +103,23 @@ function drawSlide(){
   // Set selected state
   trueBtn.classList.remove('selected');
   falseBtn.classList.remove('selected');
+  trueBtn.classList.remove('correct');
+  trueBtn.classList.remove('incorrect');
+  falseBtn.classList.remove('correct');
+  falseBtn.classList.remove('incorrect');
   const ans = userAnswers[index];
-  if(ans && ans.choice === true) trueBtn.classList.add('selected');
-  if(ans && ans.choice === false) falseBtn.classList.add('selected');
+  if(ans && ans.choice === true && !ans.finished) trueBtn.classList.add('selected');
+  if(ans && ans.choice === false && !ans.finished) falseBtn.classList.add('selected');
+  if(ans && ans.choice === true && ans.finished) {
+    if (slide.is_malicious) trueBtn.classList.add('correct');
+    else trueBtn.classList.add('incorrect');
+  }
+  if(ans && ans.choice === false && ans.finished) {
+    if (slide.is_malicious) falseBtn.classList.add('incorrect');
+    else falseBtn.classList.add('correct');
+  }
 
-    // Disable submit button if slide is finished
+  // Disable submit button if slide is finished
   const submitBtn = $('submitBtn');
   const trueLabelBtn = $('chooseTrue');
   const falseLabelBtn = $('chooseFalse');
