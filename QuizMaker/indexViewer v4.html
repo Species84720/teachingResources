@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Phishing Quiz Viewer</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#f6f8fb;color:#111}
+    .panel{max-width:960px;margin:20px auto;background:#fff;padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(20,30,70,0.08)}
+    h2{margin-top:0}
+    canvas{background:#222;border-radius:8px;display:block;max-width:100%;height:auto;margin-bottom:8px}
+    button,input[type=file]{background:#0b79d0;color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;margin-right:8px;margin-bottom:8px}
+    button.ghost{background:#fff;color:#0b79d0;border:1px solid #0b79d0}
+    .small{font-size:0.85rem;color:#555}
+    .result{padding:12px;border-radius:10px;background:#f6f6f6;margin-top:16px}
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <h2>Viewer — Take Quiz</h2>
+    <input id="jsonFile" type="file" accept="application/json">
+    <button id="loadBtn">Load Quiz</button>
+
+    <canvas id="viewerCanvas" width="800" height="480"></canvas>
+
+    <div>
+      <button id="choosePhish" class="ghost">Malicious</button>
+      <button id="chooseReal" class="ghost">Real</button>
+      <span class="small">Your choice: <span id="userChoice">—</span></span>
+    </div>
+
+    <button id="submitBtn">Submit Answer</button>
+    <button id="nextBtn">Next Slide</button>
+
+    <div id="progress" class="small">0 / 0</div>
+    <div id="finalResult" class="result" style="display:none"></div>
+
+    <a href="index.html" class="ghost" style="padding:8px 12px;display:inline-block;text-decoration:none">Back to Editor</a>
+  </div>
+
+  <script>
+    const $=id=>document.getElementById(id);
+    const viewerCanvas=$('viewerCanvas');const vCtx=viewerCanvas.getContext('2d');
+    let quiz={slides:[]},index=0,userAnswers=[];
+
+    function fitCanvasToImage(canvas,img){
+      const maxW=800,maxH=480;
+      let w=img.width,h=img.height;
+      const ratio=Math.min(maxW/w,maxH/h,1);
+      w=Math.round(w*ratio);h=Math.round(h*ratio);
+      canvas.width=w;canvas.height=h;
+    }
+
+    function drawSlide(){
+      vCtx.clearRect(0,0,viewerCanvas.width,viewerCanvas.height);
+      const slide=quiz.slides[index]; if(!slide)return;
+      const img=new Image(); img.onload=()=>{
+        fitCanvasToImage(viewerCanvas,img);
+        vCtx.drawImage(img,0,0,viewerCanvas.width,viewerCanvas.height);
+        const ans=userAnswers[index]||{clicks:[]};
+        ans.clicks.forEach(c=>{
+          vCtx.beginPath(); 
+          vCtx.arc(c.x*viewerCanvas.width,c.y*viewerCanvas.height,8,0,Math.PI*2);
+          vCtx.fillStyle='rgba(0,120,0,0.6)'; vCtx.fill();
+          vCtx.strokeStyle='#fff'; vCtx.stroke();
+        });
+      };
+      img.src=slide.image;
+      $('userChoice').innerText=(userAnswers[index]&&userAnswers[index].choice!=null)?(userAnswers[index].choice?'Malicious':'Real'):'—';
+      $('progress').innerText=`${index+1} / ${quiz.slides.length}`;
+    }
+
+    function getClickCoords(e,canvas){
+      const rect=canvas.getBoundingClientRect();
+      const x=(e.clientX-rect.left)/rect.width;
+      const y=(e.clientY-rect.top)/rect.height;
+      return {x,y};
+    }
+
+    viewerCanvas.addEventListener('click',e=>{
+      if(!quiz.slides.length)return;
+      const {x,y}=getClickCoords(e,viewerCanvas);
+      if(!userAnswers[index])userAnswers[index]={clicks:[],choice:null};
+      for(let i=0;i<userAnswers[index].clicks.length;i++){
+        const c=userAnswers[index].clicks[i];
+        const dist=Math.hypot((x-c.x)*viewerCanvas.width,(y-c.y)*viewerCanvas.height);
+        if(dist<20){userAnswers[index].clicks.splice(i,1);drawSlide();return;}
+      }
+      userAnswers[index].clicks.push({x,y});
+      drawSlide();
+    });
+
+    $('choosePhish').onclick=()=>{if(!userAnswers[index])userAnswers[index]={clicks:[],choice:null};userAnswers[index].choice=true;$('userChoice').innerText='Malicious';};
+    $('chooseReal').onclick=()=>{if(!userAnswers[index])userAnswers[index]={clicks:[],choice:null};userAnswers[index].choice=false;$('userChoice').innerText='Real';};
+
+    $('submitBtn').onclick=()=>{
+      if(!quiz.slides.length)return;
+      const slide=quiz.slides[index];
+      if(!userAnswers[index])userAnswers[index]={clicks:[],choice:null};
+      const ans=userAnswers[index];
+      let raw=0,max=1+(slide.points?slide.points.length:0);
+      if(ans.choice===slide.is_malicious)raw+=1;else raw-=1;
+      const found=new Array(slide.points.length).fill(false);
+      ans.clicks.forEach(c=>{
+        let best=-1,dist=1e9;
+        slide.points.forEach((p,i)=>{
+          const dx=(c.x-p.x)*viewerCanvas.width,
+                dy=(c.y-p.y)*viewerCanvas.height,
+                d=Math.hypot(dx,dy);
+          if(d<dist){dist=d;best=i;}
+        });
+        if(best>=0&&dist<=slide.points[best].r){
+          if(!found[best]){raw+=1;found[best]=true;}
+          else raw-=0.5;
+        }else raw-=0.5;
+      });
+      ans.raw=raw;ans.max=max;
+    };
+
+    $('nextBtn').onclick=()=>{
+      if(index<quiz.slides.length-1){index++;drawSlide();}else{showFinal();}
+    };
+
+    function showFinal(){
+      let total=0,max=0;
+      userAnswers.forEach(a=>{if(!a)return;total+=(a.raw||0);max+=(a.max||0);});
+      const percent=max>0?Math.max(0,Math.round((total/max)*100)):0;
+      $('finalResult').style.display='block';
+      $('finalResult').innerText=`Final Score: ${percent}%`;
+    }
+
+    $('loadBtn').onclick=()=>{
+      const f=$('jsonFile').files[0]; if(!f)return;
+      const r=new FileReader();
+      r.onload=ev=>{
+        quiz=JSON.parse(ev.target.result);index=0;userAnswers=[];drawSlide();
+      };
+      r.readAsText(f);
+    };
+  </script>
+</body>
+</html>
