@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Phishing Quiz Editor</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#f6f8fb;color:#111}
+    .panel{max-width:960px;margin:20px auto;background:#fff;padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(20,30,70,0.08)}
+    h2{margin-top:0}
+    canvas{background:#222;border-radius:8px;display:block;max-width:100%;height:auto;margin-bottom:8px}
+    button,input[type=file]{background:#0b79d0;color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;margin-right:8px;margin-bottom:8px}
+    button.ghost{background:#fff;color:#0b79d0;border:1px solid #0b79d0}
+    .small{font-size:0.85rem;color:#555}
+    #slidesList div{margin:4px 0;padding:4px;border-radius:6px;background:#f0f0f0;cursor:pointer}
+    input[type=text]{padding:4px 6px;margin-right:6px;border-radius:6px;border:1px solid #ccc}
+  </style>
+</head>
+<body>
+
+  <div class="panel" id="editorPage">
+    <h2>Editor — Build Slides</h2>
+    <input id="imgFile" type="file" accept="image/*">
+    <button id="addImgBtn">Add image</button>
+    <button id="deleteSlide">Delete current slide</button>
+    <button id="exportJson">Export JS</button>
+    <input id="importJson" type="file" accept=".js"> 
+
+    <canvas id="editorCanvas" width="800" height="480"></canvas>
+    <div class="small">Left-click empty space: add point. Left-click existing: change radius. Right-click: remove point. Drag: move.</div>
+
+    <div style="margin-top:8px;">
+      <button id="markTrue" class="ghost">Mark Malicious</button>
+      <button id="markFalse" class="ghost">Mark Real</button>
+      <span id="currentLabel">Unset</span>
+    </div>
+
+    <div style="margin-top:8px;">
+      <input id="trueLabelInput" placeholder="True label">
+      <input id="falseLabelInput" placeholder="False label">
+      <button id="updateLabels">Update Labels</button>
+    </div>
+
+    <div id="slidesList"></div>
+
+    <a href="viewer.html" class="ghost" style="padding:8px 12px;display:inline-block;text-decoration:none">Go to Viewer</a>
+  </div>
+
+  <script>
+    const $=id=>document.getElementById(id);
+    const editorCanvas=$('editorCanvas'); 
+    const eCtx=editorCanvas.getContext('2d');
+    const state={slides:[],currentIndex:-1,dragging:null};
+
+    function fitCanvasToImage(canvas,img){
+      const maxW=800,maxH=480;
+      let w=img.width,h=img.height;
+      const ratio=Math.min(maxW/w,maxH/h,1);
+      w=Math.round(w*ratio);h=Math.round(h*ratio);
+      canvas.width=w;canvas.height=h;
+    }
+
+    function renderEditor(){
+      eCtx.clearRect(0,0,editorCanvas.width,editorCanvas.height);
+      const slide=state.slides[state.currentIndex]; if(!slide) return;
+
+      // Update dynamic button labels
+      $('markTrue').innerText = slide.labels?.trueLabel || 'Mark Malicious';
+      $('markFalse').innerText = slide.labels?.falseLabel || 'Mark Real';
+      $('currentLabel').innerText = slide.is_malicious === true
+        ? slide.labels?.trueLabel
+        : slide.is_malicious === false
+          ? slide.labels?.falseLabel
+          : 'Unset';
+
+      const img=new Image(); 
+      img.onload=()=>{
+        fitCanvasToImage(editorCanvas,img);
+        eCtx.drawImage(img,0,0,editorCanvas.width,editorCanvas.height);
+        slide.points.forEach((p,i)=>{
+          const px=p.x*editorCanvas.width, py=p.y*editorCanvas.height;
+          eCtx.beginPath(); eCtx.arc(px,py,p.r||28,0,Math.PI*2);
+          eCtx.fillStyle='rgba(255,0,0,0.2)'; eCtx.fill();
+          eCtx.strokeStyle='red'; eCtx.stroke();
+          eCtx.fillStyle='#000'; eCtx.fillText(i+1,px-4,py+4);
+          eCtx.fillText(`${p.r||28}px`, px+10, py-10);
+        });
+      };
+      img.src=slide.image;
+    }
+
+    function getClickCoords(e,canvas){
+      const rect=canvas.getBoundingClientRect();
+      const x=(e.clientX-rect.left)/rect.width;
+      const y=(e.clientY-rect.top)/rect.height;
+      return {x,y};
+    }
+
+    editorCanvas.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      const {x,y}=getClickCoords(e,editorCanvas);
+      const slide=state.slides[state.currentIndex]; if(!slide)return;
+
+      // Right-click = remove point
+      if(e.button===2){
+        for(let i=0;i<slide.points.length;i++){
+          const p=slide.points[i];
+          const dist=Math.hypot((x-p.x)*editorCanvas.width,(y-p.y)*editorCanvas.height);
+          if(dist<(p.r||28)){slide.points.splice(i,1);renderEditor();renderSlides();return;}
+        }
+      }
+
+      // Left-click = add new OR change radius if clicking existing
+      if(e.button===0){
+        for(let i=0;i<slide.points.length;i++){
+          const p=slide.points[i];
+          const dist=Math.hypot((x-p.x)*editorCanvas.width,(y-p.y)*editorCanvas.height);
+          if(dist<(p.r||28)){
+            const sizes=[16,28,40,60];
+            const currentIndex=sizes.indexOf(p.r||28);
+            p.r=sizes[(currentIndex+1)%sizes.length];
+            renderEditor();renderSlides();
+            return;
+          }
+        }
+        slide.points.push({x,y,r:28}); renderEditor(); renderSlides();
+      }
+    });
+
+    editorCanvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+    // Dragging support
+    editorCanvas.addEventListener('mousemove',e=>{
+      if(state.dragging==null)return; 
+      const {x,y}=getClickCoords(e,editorCanvas);
+      const slide=state.slides[state.dragging?.slideIndex];
+      if(slide){
+        slide.points[state.dragging.pointIndex].x=x;
+        slide.points[state.dragging.pointIndex].y=y;
+        renderEditor();
+      }
+    });
+    editorCanvas.addEventListener('mouseup',()=>{state.dragging=null;});
+
+    $('addImgBtn').addEventListener('click',()=>{
+      const f=$('imgFile').files[0]; if(!f)return;
+      const r=new FileReader(); 
+      r.onload=e=>{
+        state.slides.push({
+          image:e.target.result,
+          is_malicious:null,
+          points:[],
+          labels:{trueLabel:'Malicious', falseLabel:'Real'}
+        });
+        state.currentIndex=state.slides.length-1;
+        renderEditor(); renderSlides();
+      }; 
+      r.readAsDataURL(f);
+    });
+
+    $('deleteSlide').onclick=()=>{
+      if(state.currentIndex>=0){
+        state.slides.splice(state.currentIndex,1);
+        state.currentIndex=Math.max(0,state.slides.length-1);
+        renderSlides();renderEditor();
+      }
+    }
+
+    $('markTrue').onclick=()=>{
+      if(state.currentIndex>=0){
+        state.slides[state.currentIndex].is_malicious=true;
+        renderEditor(); renderSlides();
+      }
+    };
+    $('markFalse').onclick=()=>{
+      if(state.currentIndex>=0){
+        state.slides[state.currentIndex].is_malicious=false;
+        renderEditor(); renderSlides();
+      }
+    };
+
+    $('updateLabels').onclick=()=>{
+      if(state.currentIndex>=0){
+        const slide=state.slides[state.currentIndex];
+        slide.labels={
+          trueLabel:$('trueLabelInput').value||'Malicious',
+          falseLabel:$('falseLabelInput').value||'Real'
+        };
+        renderEditor(); renderSlides();
+      }
+    }
+
+    function renderSlides(){
+      $('slidesList').innerHTML='';
+      state.slides.forEach((s,i)=>{
+        const div=document.createElement('div'); 
+        div.textContent=`Slide ${i+1}: ${s.is_malicious===true?s.labels.trueLabel:s.is_malicious===false?s.labels.falseLabel:'Unset'}, Points: ${s.points.length}`;
+        div.onclick=()=>{state.currentIndex=i; renderEditor(); };
+        $('slidesList').appendChild(div);
+      });
+    }
+
+    $('exportJson').onclick=()=>{
+      if(!state.slides.length)return;
+      const out={slides:state.slides};
+      const jsContent = 'quiz = ' + JSON.stringify(out) + ';';
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([jsContent],{type:'application/javascript'}));
+      a.download='quiz.js';a.click();
+    };
+
+    $('importJson').onchange=e=>{
+      const f=e.target.files[0];if(!f)return;
+      const r=new FileReader();
+      r.onload=ev=>{
+        let text = ev.target.result;
+        // If file starts with 'quiz =', extract JSON
+        if(text.trim().startsWith('quiz =')) {
+          text = text.replace(/^quiz\s*=\s*/, '').replace(/;\s*$/, '');
+        }
+        let parsed;
+        try {
+          parsed = JSON.parse(text);
+        } catch (err) {
+          alert('Failed to parse file: ' + err);
+          return;
+        }
+        state.slides=parsed.slides||[];
+        state.currentIndex=state.slides.length?0:-1;
+        renderSlides();renderEditor();
+      };
+      r.readAsText(f);
+    };
+  </script>
+</body>
+</html>

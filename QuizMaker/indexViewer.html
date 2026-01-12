@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Child-Friendly Quiz Viewer</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:#f6f8fb;color:#111;display:flex;flex-direction:column;align-items:center}
+    .panel{max-width:960px;margin:20px auto;background:#fff;padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(20,30,70,0.08);width:100%;display:flex;flex-direction:column;align-items:center}
+    canvas{background:#222;border-radius:8px;display:block;max-width:100%;height:auto;margin-bottom:8px}
+    button{border:none;padding:16px 24px;border-radius:12px;font-size:1.2rem;cursor:pointer;margin:8px}
+    button.label{background:#0b79d0;color:#fff;transition:background 0.2s}
+    button.label.selected{background:#4fb3f6;color:#fff}
+    button.label.correct{background:#49ff49;color:#fff}
+    button.label.incorrect{background:#ff4f4f;color:#fff}
+    button.nav{background:#0b79d0;color:#fff}   /* navigation buttons */
+    #nextBtn { display: none; }
+    .progress{font-size:1rem;margin-bottom:8px}
+  </style>
+</head>
+<body>
+
+<div id="loginPanel" style="position:fixed;top:18px;right:32px;z-index:10;background:#fff;padding:12px 18px;border-radius:10px;box-shadow:0 2px 8px rgba(20,30,70,0.08);display:flex;flex-direction:row;align-items:center;gap:10px;">
+  <form id="loginForm" style="display:flex;flex-direction:row;align-items:center;gap:10px;margin:0;">
+    <input id="usernameInput" type="text" placeholder="Enter your name" style="padding:8px 12px;font-size:1rem;border-radius:8px;border:1px solid #ccc;width:160px;">
+    <button id="loginBtn" type="submit" class="nav" style="padding:8px 16px;">Login</button>
+  </form>
+  <span id="userDisplay" style="display:none;font-weight:500;color:#0b79d0;"></span>
+</div>
+
+<div class="panel" id="quizPanel" style="display:none;">
+  <h2>Quiz Viewer</h2>
+  <!-- Top choice buttons -->
+  <div id="choiceButtons">
+    <button id="chooseTrue" class="label">True</button>
+    <button id="chooseFalse" class="label">False</button>
+  </div>
+  <!-- Canvas -->
+  <canvas id="viewerCanvas" width="800" height="480"></canvas>
+  <!-- Progress -->
+  <div class="progress" id="progress">0 / 0</div>
+  <!-- Bottom navigation -->
+  <div>
+    <button id="prevBtn" class="nav">Previous</button>
+    <button id="submitBtn" class="nav">Submit</button>
+    <button id="nextBtn" class="nav">Next</button>
+    <button id="showBtn" class="nav">Show Results</button>
+  </div>
+</div>
+
+<script>
+let username = null;
+
+// Login logic
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const input = document.getElementById('usernameInput');
+  if(input.value.trim().length === 0) {
+    input.style.borderColor = 'red';
+    input.focus();
+    return;
+  }
+  username = input.value.trim();
+  document.getElementById('quizPanel').style.display = '';
+  document.getElementById('loginForm').style.display = 'none';
+  const userDisplay = document.getElementById('userDisplay');
+  userDisplay.textContent = username;
+  userDisplay.style.display = '';
+});
+
+const $ = id => document.getElementById(id);
+let quiz = null;
+let index = 0;
+let userAnswers = [];
+let file = null;
+
+// Canvas helpers
+function fitCanvasToImage(canvas,img){
+  const maxW=800,maxH=480;
+  let w=img.width,h=img.height;
+  const ratio=Math.min(maxW/w,maxH/h,1);
+  w=Math.round(w*ratio); h=Math.round(h*ratio);
+  canvas.width=w; canvas.height=h;
+}
+
+function drawSlide(){
+  if(!quiz) return;
+  const viewerCanvas = $('viewerCanvas');
+  const vCtx = viewerCanvas.getContext('2d');
+  vCtx.clearRect(0,0,viewerCanvas.width,viewerCanvas.height);
+
+  const slide = quiz.slides[index];
+  if(!slide) return;
+
+  const img = new Image();
+  img.onload = () => {
+    fitCanvasToImage(viewerCanvas,img);
+    vCtx.drawImage(img,0,0,viewerCanvas.width,viewerCanvas.height);
+
+    // Draw clicks
+    const ans = userAnswers[index]||{clicks:[]};
+    ans.clicks.forEach(c=>{
+      vCtx.beginPath();
+      vCtx.arc(c.x*viewerCanvas.width,c.y*viewerCanvas.height,12,0,Math.PI*2);
+      if (c.correct == null) {
+        vCtx.fillStyle='rgba(56, 42, 186, 0.6)'; 
+      }
+      else if (c.correct) {
+        vCtx.fillStyle='rgba(0, 120, 0, 0.6)'; 
+      } else {
+        vCtx.fillStyle='rgba(255, 0, 0, 0.6)'; 
+      }
+      vCtx.fill();
+      vCtx.strokeStyle='#fff'; vCtx.lineWidth=2; vCtx.stroke();
+    });
+  };
+  img.src = slide.image;
+
+  // Dynamic button labels
+  const trueLabel = slide.labels?.trueLabel || 'True';
+  const falseLabel = slide.labels?.falseLabel || 'False';
+  const trueBtn = $('chooseTrue');
+  const falseBtn = $('chooseFalse');
+  trueBtn.innerText = trueLabel;
+  falseBtn.innerText = falseLabel;
+
+  // Set selected state
+  trueBtn.classList.remove('selected');
+  falseBtn.classList.remove('selected');
+  trueBtn.classList.remove('correct');
+  trueBtn.classList.remove('incorrect');
+  falseBtn.classList.remove('correct');
+  falseBtn.classList.remove('incorrect');
+  const ans = userAnswers[index];
+  if(ans && ans.choice === true && !ans.finished) trueBtn.classList.add('selected');
+  if(ans && ans.choice === false && !ans.finished) falseBtn.classList.add('selected');
+  if(ans && ans.choice === true && ans.finished) {
+    if (slide.is_malicious) trueBtn.classList.add('correct');
+    else trueBtn.classList.add('incorrect');
+  }
+  if(ans && ans.choice === false && ans.finished) {
+    if (slide.is_malicious) falseBtn.classList.add('incorrect');
+    else falseBtn.classList.add('correct');
+  }
+
+  // Disable submit button if slide is finished
+  const submitBtn = $('submitBtn');
+  const trueLabelBtn = $('chooseTrue');
+  const falseLabelBtn = $('chooseFalse');
+  const nextBtn = $('nextBtn');
+  const prevBtn = $('prevBtn');
+  const showBtn = $('showBtn');
+  if(ans && ans.finished) {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = 0.5;
+    submitBtn.style.cursor = 'not-allowed';
+    trueLabelBtn.disabled = true;
+    trueLabelBtn.style.opacity = 0.5;
+    trueLabelBtn.style.cursor = 'not-allowed';
+    falseLabelBtn.disabled = true;
+    falseLabelBtn.style.opacity = 0.5;
+    falseLabelBtn.style.cursor = 'not-allowed';
+
+    if (quiz.slides.length > index + 1) {
+      nextBtn.style.display = 'inline-block';
+    }
+    else {
+      nextBtn.style.display = 'none';
+    }
+
+    showBtn.style.display = 'inline-block';
+  } else {
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = 1;
+    submitBtn.style.cursor = 'pointer';
+    trueLabelBtn.disabled = false;
+    trueLabelBtn.style.opacity = 1;
+    trueLabelBtn.style.cursor = 'pointer';
+    falseLabelBtn.disabled = false;
+    falseLabelBtn.style.opacity = 1;
+    falseLabelBtn.style.cursor = 'pointer';
+    nextBtn.style.display = 'none';
+    showBtn.style.display = 'none';
+  }
+  if (index === 0) {
+    prevBtn.disabled = true;
+    prevBtn.style.opacity = 0.5;
+    prevBtn.style.cursor = 'not-allowed';
+    prevBtn.style.display = 'none';
+  } else {
+    prevBtn.disabled = false;
+    prevBtn.style.opacity = 1;
+    prevBtn.style.cursor = 'pointer';
+    prevBtn.style.display = 'inline-block';
+  }
+
+  $('progress').innerText=`${index+1} / ${quiz.slides.length}`;
+}
+
+// Get click coords
+function getClickCoords(e,canvas){
+  const rect = canvas.getBoundingClientRect();
+  return { x: (e.clientX-rect.left)/rect.width, y: (e.clientY-rect.top)/rect.height };
+}
+
+// Canvas click handler
+$('viewerCanvas').addEventListener('click',e=>{
+  if(!quiz) return;
+  const ans = userAnswers[index];
+  if(ans && ans.finished) return;
+  const {x,y} = getClickCoords(e,$('viewerCanvas'));
+  if(!userAnswers[index]) userAnswers[index]={clicks:[],choice:null};
+
+  // Remove click if too close
+  for(let i=0;i<userAnswers[index].clicks.length;i++){
+    const c=userAnswers[index].clicks[i];
+    const dist = Math.hypot((x-c.x)*$('viewerCanvas').width,(y-c.y)*$('viewerCanvas').height);
+    if(dist<20){ userAnswers[index].clicks.splice(i,1); drawSlide(); return; }
+  }
+  userAnswers[index].clicks.push({x,y});
+  drawSlide();
+});
+
+// Choice buttons
+$('chooseTrue').onclick = ()=>{ 
+  const ans = userAnswers[index];
+  if(ans && ans.finished) return;
+  if(!userAnswers[index]) {
+    userAnswers[index]={clicks:[],choice:null}; 
+  }
+  userAnswers[index].choice=true; 
+  drawSlide();
+}
+$('chooseFalse').onclick = ()=>{ 
+  const ans = userAnswers[index];
+  if(ans && ans.finished) return;
+  if(!userAnswers[index]) {
+    userAnswers[index]={clicks:[],choice:null}; 
+  }
+  userAnswers[index].choice=false; 
+  drawSlide();
+}
+
+// Navigation
+$('nextBtn').onclick = ()=>{ 
+  if(index<quiz.slides.length-1){ 
+    index++; 
+    drawSlide(); 
+    // Hide Next button again until submit is clicked
+    // $('nextBtn').style.display = 'none';
+  } 
+}
+$('prevBtn').onclick = ()=>{ if(index>0){ index--; drawSlide(); } }
+
+// Calculate score
+function calculateScores(){
+  userAnswers.forEach((ans,i)=>{
+    const slide=quiz.slides[i];
+    if(!ans) ans={clicks:[],choice:null};
+    ans.raw=0;
+    ans.max=1+(slide.points?slide.points.length:0);
+    if(ans.choice===slide.is_malicious) ans.raw+=1;
+    else ans.raw-=1;
+
+    const found = new Array(slide.points.length).fill(false);
+    ans.clicks.forEach(c=>{
+      let best=-1, bestD=1e9;
+      slide.points.forEach((p,pi)=>{
+        const dx=(c.x-p.x)*$('viewerCanvas').width;
+        const dy=(c.y-p.y)*$('viewerCanvas').height;
+        const d=Math.hypot(dx,dy);
+        if(d<bestD){ bestD=d; best=pi; }
+      });
+      if(best>=0 && bestD<=slide.points[best].r){
+        if(!found[best]){ ans.raw+=1; found[best]=true; }
+        else{ ans.raw-=0.5; }
+      } else ans.raw-=0.5;
+    });
+  });
+}
+
+// Calculate score
+function calculatePageScores(pageNo){
+  var ans = userAnswers[pageNo];
+  const slide=quiz.slides[pageNo];
+  if(!ans) ans={clicks:[],choice:null};
+  ans.raw=0;
+  ans.max=1+(slide.points?slide.points.length:0);
+  if(ans.choice===slide.is_malicious) ans.raw+=1;
+  else ans.raw-=1;
+
+  const found = new Array(slide.points.length).fill(false);
+  ans.clicks.forEach(c=>{
+    let best=-1, bestD=1e9;
+    slide.points.forEach((p,pi)=>{
+      const dx=(c.x-p.x)*$('viewerCanvas').width;
+      const dy=(c.y-p.y)*$('viewerCanvas').height;
+      const d=Math.hypot(dx,dy);
+      if(d<bestD){ bestD=d; best=pi; }
+    });
+    if(best>=0 && bestD<=slide.points[best].r){
+      if(!found[best]){ 
+        ans.raw+=1; 
+        found[best]=true; 
+        c.correct = true;
+      }
+      else{ 
+        ans.raw-=0.5;
+        c.correct = false;
+      }
+    } 
+    else {
+      ans.raw-=0.5;
+      c.correct = false;
+    }
+  });
+}
+
+function sendPowerAutomateFunc(amount, total){
+  // Placeholder for Power Automate integration
+  // Call the get method to submit the score
+  const page = total ? 'final' : (index + 1);
+  const url = `https://default34cdd9f55db849bcacba01f65cca68.0d.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/e26a89c20fe34f509e034ebd476804d8/triggers/manual/paths/invoke/${username}/${file}/${page}/${amount}?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VfiQx9nfalkaba1FGiNh9Zp2Sz3mxwqSGOj8ODezxZk`;
+
+  fetch(url)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.text();
+    })
+    .then(data => {
+      console.log('Success:', data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+}
+
+function showResults(sendPowerAutomate){
+  let total=0, max=0;
+  let totalPage=0, maxPage=0;
+  calculatePageScores(index);
+  let cond = userAnswers[index];
+  if(cond) {
+    totalPage += (Math.max(cond.raw, 0)||0);
+    maxPage += (cond.max||0);
+  }
+  const pagePercent = maxPage>0 ? Math.max(0,Math.round((totalPage/maxPage)*100)) : 0;
+
+  if (sendPowerAutomate) {
+    sendPowerAutomateFunc(pagePercent);
+  }
+
+  if (quiz.slides.length === index + 1) {
+    calculateScores();
+    userAnswers.forEach(a=>{ if(!a) return; total += (Math.max(a.raw, 0)||0); max += (a.max||0); });
+    const percent = max>0 ? Math.max(0,Math.round((total/max)*100)) : 0;
+    if (sendPowerAutomate) {
+      sendPowerAutomateFunc(percent, true);
+    }
+    alert(`Great job! Your score is: ${pagePercent}%. Your final score is: ${percent}%`);
+  }
+  else {
+    alert(`Great job! Your score is: ${pagePercent}%`);
+  }
+}
+
+// Show Results
+$('showBtn').onclick = ()=>{
+  showResults();
+}
+
+// Submit
+$('submitBtn').onclick = ()=>{
+  if (userAnswers[index] != null) {
+    showResults(true);
+    // Mark slide as finished
+    if(!userAnswers[index]) userAnswers[index] = {clicks:[],choice:null};
+    userAnswers[index].finished = true;
+    // Show Next button
+    $('nextBtn').style.display = 'inline-block';
+    // Update button state
+    drawSlide();
+  }
+  else {
+    alert("Please answer the question before submitting.");
+  }
+}
+
+// Load JS quiz from URL
+function loadQuizFromURL(){
+  const params = new URLSearchParams(window.location.search);
+  file = params.get('quiz');
+  if(!file){ alert("No quiz specified in URL"); return; }
+
+  const script = document.createElement('script');
+  script.src = file;
+  script.onload = ()=>{
+    if(typeof quiz==="undefined"){ alert("Quiz file loaded but 'quiz' variable not found!"); }
+    else { userAnswers=[]; index=0; drawSlide(); }
+  };
+  script.onerror = ()=>alert("Failed to load quiz file: "+file);
+  document.body.appendChild(script);
+}
+
+loadQuizFromURL();
+</script>
+
+</body>
+</html>
