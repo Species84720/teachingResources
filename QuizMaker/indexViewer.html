@@ -317,12 +317,26 @@ function calculatePageScores(pageNo){
 }
 
 function sendPowerAutomateFunc(amount, total){
+  const canvas = document.getElementById('viewerCanvas');
+  const imageData = canvas.toDataURL('image/png');
+  // 2. Extract just the Base64 part (remove the "data:image/png;base64," header)
+  const base64Body = imageData.split(',')[1];
+
   // Placeholder for Power Automate integration
   // Call the get method to submit the score
   const page = total ? 'final' : (index + 1);
   const url = `https://default34cdd9f55db849bcacba01f65cca68.0d.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/e26a89c20fe34f509e034ebd476804d8/triggers/manual/paths/invoke/${username}/${file}/${page}/${amount}?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VfiQx9nfalkaba1FGiNh9Zp2Sz3mxwqSGOj8ODezxZk`;
 
-  fetch(url)
+  fetch(url, {
+      method: 'POST', // Changed from default GET to POST
+      headers: {
+        'Content-Type': 'application/json' // Set content type to JSON
+      },
+      body: JSON.stringify({ 
+        "condition": '' + userAnswers[index].choice,
+        "base64Image": base64Body 
+      }) // Send the Base64 image in the body
+    })
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -388,20 +402,56 @@ $('submitBtn').onclick = ()=>{
   }
 }
 
+async function loadScript(url) {
+  try {
+    // 1. Fetch the script using POST
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/javascript'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch script: ${response.status}`);
+    }
+
+    quiz = await response.json();
+
+    console.log("Script loaded and executed via POST.");
+  } catch (error) {
+    console.error("Error loading script via POST:", error);
+    throw error;
+  }
+}
+
 // Load JS quiz from URL
-function loadQuizFromURL(){
+async function loadQuizFromURL() {
   const params = new URLSearchParams(window.location.search);
   file = params.get('quiz');
-  if(!file){ alert("No quiz specified in URL"); return; }
 
-  const script = document.createElement('script');
-  script.src = file;
-  script.onload = ()=>{
-    if(typeof quiz==="undefined"){ alert("Quiz file loaded but 'quiz' variable not found!"); }
-    else { userAnswers=[]; index=0; drawSlide(); }
-  };
-  script.onerror = ()=>alert("Failed to load quiz file: "+file);
-  document.body.appendChild(script);
+  if (!file) return alert("No quiz specified");
+
+  try {
+    const url = `https://default34cdd9f55db849bcacba01f65cca68.0d.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/e26a89c20fe34f509e034ebd476804d8/triggers/manual/paths/invoke/loadJson/${file}/0/0?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VfiQx9nfalkaba1FGiNh9Zp2Sz3mxwqSGOj8ODezxZk`;
+
+    // We "await" the loading and execution of the JS file
+    await loadScript(url);
+
+    // Once the script loads, 'quiz' exists globally
+    if (typeof quiz === "undefined") {
+      throw new Error("File loaded, but 'quiz' variable not found.");
+    }
+
+    console.log("Quiz loaded successfully!");
+    userAnswers = [];
+    index = 0;
+    drawSlide();
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
 }
 
 loadQuizFromURL();

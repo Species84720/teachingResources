@@ -25,6 +25,9 @@
     <button id="deleteSlide">Delete current slide</button>
     <button id="exportJson">Export JS</button>
     <input id="importJson" type="file" accept=".js"> 
+    <input id="jsonText" type="text" placeholder="JS" /> 
+    <button id="uploadJson">Upload JS</button>
+    <button id="loadJson">Load JS</button>
 
     <canvas id="editorCanvas" width="800" height="480"></canvas>
     <div class="small">Left-click empty space: add point. Left-click existing: change radius. Right-click: remove point. Drag: move.</div>
@@ -230,6 +233,71 @@
         renderSlides();renderEditor();
       };
       r.readAsText(f);
+    };
+
+    async function loadScript(url) {
+      try {
+        // 1. Fetch the script using POST
+        const response = await fetch(url, {
+          method: 'POST',
+          async: false, // Synchronous request (not recommended in production)
+          headers: {
+            'Content-Type': 'application/javascript'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch script: ${response.status}`);
+        }
+
+        quiz = response.json();
+
+        console.log("Script loaded and executed via POST.");
+      } catch (error) {
+        console.error("Error loading script via POST:", error);
+        throw error;
+      }
+      return quiz;
+    }
+
+    $('loadJson').onclick = async e => {
+      const file = $('jsonText').value.trim();
+      if(!file) return alert("Please enter JS code in the input field.");
+
+      const url = `https://default34cdd9f55db849bcacba01f65cca68.0d.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/e26a89c20fe34f509e034ebd476804d8/triggers/manual/paths/invoke/loadJson/${file}/0/0?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VfiQx9nfalkaba1FGiNh9Zp2Sz3mxwqSGOj8ODezxZk`;
+
+      try {
+        let quiz = await loadScript(url);
+
+        // Once the script loads, 'quiz' exists globally
+        if (typeof quiz === "undefined") {
+          throw new Error("File loaded, but 'quiz' variable not found.");
+        }
+
+        state.slides=quiz.slides||[];
+        state.currentIndex=state.slides.length?0:-1;
+        renderSlides();
+        renderEditor();
+      } catch (error) {
+        console.error(error);
+        alert(error.message);
+      }
+    };
+
+    $('uploadJson').onclick=()=>{
+      const file = $('jsonText').value.trim();
+      if(!file) return alert("Please enter JS code in the input field.");
+
+      const url = `https://default34cdd9f55db849bcacba01f65cca68.0d.environment.api.powerplatform.com/powerautomate/automations/direct/workflows/e26a89c20fe34f509e034ebd476804d8/triggers/manual/paths/invoke/uploadJson/${file}/0/0?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=VfiQx9nfalkaba1FGiNh9Zp2Sz3mxwqSGOj8ODezxZk`;
+
+      const out={slides:state.slides};
+      const response = fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ "jsonBody": JSON.stringify(out) })
+      });
     };
   </script>
 </body>
