@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TeacherKit — Dashboard</title>
+  <link href="shared.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html" class="logo">Teacher<span>Kit</span></a>
+    <div class="nav-right" id="auth-section">
+      <button class="btn btn-gold" id="btn-login">Login with Google</button>
+    </div>
+  </div>
+  <div style="padding: 40px; display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+    <a href="quiz-editor.html" class="btn btn-primary">Open Quiz Editor (PowerPoint Style)</a>
+    <a href="bingo-generator.html" class="btn btn-primary">Open Bingo Generator</a>
+    <a href="drag-and-sort.html" class="btn btn-primary">Open Drag & Sort (Categories)</a>
+    <a href="image-analyzer.html" class="btn btn-primary">Open Image Analyzer (Blackout)</a>
+    <a href="snakes-ladders.html" class="btn btn-primary">Open Snakes & Ladders (Dynamic)</a>
+  </div>
+
+  <script type="module">
+    import { auth, provider, signInWithPopup, signOut, onAuthStateChanged } from './firebase-config.js';
+
+    const authSection = document.getElementById('auth-section');
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authSection.innerHTML = `<span style="font-weight:bold;">${user.displayName}</span> <button class="btn" id="btn-logout">Logout</button>`;
+        document.getElementById('btn-logout').addEventListener('click', () => signOut(auth));
+      } else {
+        authSection.innerHTML = `<button class="btn btn-gold" id="btn-login">Login with Google</button>`;
+        document.getElementById('btn-login').addEventListener('click', () => signInWithPopup(auth, provider));
+      }
+    });
+  </script>
+</body>
+</html>

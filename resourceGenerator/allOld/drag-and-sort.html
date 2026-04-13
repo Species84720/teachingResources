@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Drag & Sort — TeacherKit</title>
+  <link href="shared.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html" class="logo">Teacher<span>Kit</span></a>
+    <div class="nav-right">
+      <button class="btn btn-gold" id="btn-save">Save to Firebase</button>
+    </div>
+  </div>
+  
+  <div style="padding: 20px; max-width: 800px; margin: 0 auto;">
+    <h2>Categories</h2>
+    <div id="categories-editor" style="display:flex; gap: 10px; margin-bottom: 20px;"></div>
+    <button class="btn btn-sm" id="add-cat">+ Add Category</button>
+
+    <h2 style="margin-top:30px;">Statements</h2>
+    <div id="statements-editor" style="display:flex; flex-direction:column; gap: 10px; margin-bottom: 20px;"></div>
+    <button class="btn btn-sm" id="add-stmt">+ Add Statement</button>
+  </div>
+
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    let categories = ["Bullying", "Banter"];
+    let statements = [{ text: "Pushing someone", cat: "Bullying" }];
+
+    function render() {
+        const catEd = document.getElementById('categories-editor');
+        catEd.innerHTML = categories.map((c, i) => `<input type="text" value="${c}" onchange="updateCat(${i}, this.value)" />`).join('');
+        
+        const stmtEd = document.getElementById('statements-editor');
+        stmtEd.innerHTML = statements.map((s, i) => `
+            <div style="display:flex; gap:10px;">
+                <input type="text" value="${s.text}" onchange="updateStmtText(${i}, this.value)" style="flex:1;" />
+                <select onchange="updateStmtCat(${i}, this.value)">
+                    ${categories.map(c => `<option value="${c}" ${s.cat === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+            </div>
+        `).join('');
+    }
+
+    window.updateCat = (i, val) => { categories[i] = val; render(); };
+    window.updateStmtText = (i, val) => { statements[i].text = val; };
+    window.updateStmtCat = (i, val) => { statements[i].cat = val; };
+
+    document.getElementById('add-cat').onclick = () => { categories.push("New Category"); render(); };
+    document.getElementById('add-stmt').onclick = () => { statements.push({text: "New Statement", cat: categories[0]}); render(); };
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+        if(!auth.currentUser) return alert("Please login on dashboard!");
+        await addDoc(collection(db, "dragAndSort"), { uid: auth.currentUser.uid, categories, statements });
+        alert("Saved to Firebase!");
+    });
+
+    render();
+  </script>
+</body>
+</html>

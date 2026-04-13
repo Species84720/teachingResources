@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz Editor — TeacherKit</title>
+  <link href="shared.css" rel="stylesheet" />
+  <style>
+    .editor-canvas { position: relative; width: 800px; height: 600px; background: white; border: 2px dashed #ccc; margin: 20px auto; overflow: hidden; }
+    .canvas-item { position: absolute; border: 1px solid transparent; cursor: move; user-select: none; }
+    .canvas-item.active { border: 2px solid var(--gold); }
+    .hidden-until-answer { opacity: 0.3; border: 2px dashed var(--rose); } /* Visual indicator for teachers */
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html" class="logo">Teacher<span>Kit</span></a>
+    <div class="nav-right">
+      <button class="btn btn-primary" id="add-text">Add Text</button>
+      <button class="btn btn-primary" id="add-image">Add Image</button>
+      <button class="btn btn-gold" id="save-quiz">Save to Firebase</button>
+    </div>
+  </div>
+
+  <div class="editor-canvas" id="canvas"></div>
+
+  <div style="text-align: center; margin-top: 10px;">
+    <label><input type="checkbox" id="reveal-toggle" disabled> Reveal selected image ONLY on answer</label>
+  </div>
+
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const canvas = document.getElementById('canvas');
+    let items = [];
+    let selectedId = null;
+
+    document.getElementById('add-text').addEventListener('click', () => {
+      const id = Date.now().toString();
+      items.push({ id, type: 'text', content: 'Double click to edit', x: 50, y: 50, revealOnAnswer: false });
+      render();
+    });
+
+    document.getElementById('add-image').addEventListener('click', () => {
+      const url = prompt("Enter image URL:");
+      if(url) {
+        const id = Date.now().toString();
+        items.push({ id, type: 'image', content: url, x: 50, y: 50, revealOnAnswer: false });
+        render();
+      }
+    });
+
+    function render() {
+      canvas.innerHTML = '';
+      items.forEach(item => {
+        const el = document.createElement(item.type === 'text' ? 'div' : 'img');
+        el.className = `canvas-item ${item.id === selectedId ? 'active' : ''} ${item.revealOnAnswer ? 'hidden-until-answer' : ''}`;
+        el.style.left = item.x + 'px';
+        el.style.top = item.y + 'px';
+        
+        if (item.type === 'text') {
+            el.innerText = item.content;
+            el.style.fontSize = "24px";
+            el.style.padding = "10px";
+            el.ondblclick = () => {
+                const newText = prompt("Edit text:", item.content);
+                if (newText) { item.content = newText; render(); }
+            };
+        } else {
+            el.src = item.content;
+            el.style.width = "200px";
+        }
+
+        // Drag functionality
+        el.onmousedown = (e) => {
+            selectedId = item.id;
+            updateControls();
+            render();
+            let shiftX = e.clientX - el.getBoundingClientRect().left;
+            let shiftY = e.clientY - el.getBoundingClientRect().top;
+            
+            function onMouseMove(event) {
+                item.x = event.clientX - shiftX - canvas.getBoundingClientRect().left;
+                item.y = event.clientY - shiftY - canvas.getBoundingClientRect().top;
+                render();
+            }
+            document.addEventListener('mousemove', onMouseMove);
+            document.onmouseup = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.onmouseup = null;
+            };
+        };
+        canvas.appendChild(el);
+      });
+    }
+
+    const revealToggle = document.getElementById('reveal-toggle');
+    function updateControls() {
+        const item = items.find(i => i.id === selectedId);
+        if (item && item.type === 'image') {
+            revealToggle.disabled = false;
+            revealToggle.checked = item.revealOnAnswer;
+        } else {
+            revealToggle.disabled = true;
+            revealToggle.checked = false;
+        }
+    }
+
+    revealToggle.addEventListener('change', (e) => {
+        const item = items.find(i => i.id === selectedId);
+        if (item) {
+            item.revealOnAnswer = e.target.checked;
+            render();
+        }
+    });
+
+    document.getElementById('save-quiz').addEventListener('click', async () => {
+      if(!auth.currentUser) return alert("Please login first on the dashboard!");
+      try {
+        await addDoc(collection(db, "quizzes"), {
+          uid: auth.currentUser.uid,
+          items: items,
+          createdAt: new Date()
+        });
+        alert("Quiz saved to Firebase!");
+      } catch (e) {
+        console.error(e);
+        alert("Error saving quiz.");
+      }
+    });
+  </script>
+</body>
+</html>

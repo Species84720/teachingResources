@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Image Blackout — TeacherKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;--gold:#e9a825;--gold-dk:#c8891a;--rose:#c8584a;--sage:#4a7c6f;--surface:#fff;--border:rgba(28,28,46,.10);--ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;}
+    body{font-family:var(--fb);background:var(--cream);color:var(--ink);min-height:100vh;}
+    .nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06);}
+    .logo{font-family:var(--ff);font-weight:900;font-size:1.2rem;text-decoration:none;color:var(--ink);}.logo span{color:var(--gold);}
+    .nav-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .16s;background:transparent;color:var(--ink);text-decoration:none;}
+    .btn:hover{border-color:var(--ink);background:var(--warm);}
+    .btn-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}.btn-gold:hover{background:var(--gold-dk);}
+    .btn-ink{background:var(--ink);color:#fff;border-color:var(--ink);}
+    .btn-sage{background:var(--sage);color:#fff;border-color:var(--sage);}
+    .btn-rose{background:var(--rose);color:#fff;border-color:var(--rose);}
+    .btn-amber{background:#f59e0b;color:#fff;border-color:#f59e0b;}.btn-amber:hover{background:#d97706;}
+    .btn-sm{padding:5px 11px;font-size:.74rem;}
+    .btn:disabled{opacity:.38;pointer-events:none;}
+    .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.72rem;overflow:hidden;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+
+    /* Layout */
+    .layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 50px);}
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+    .sb-title{font-family:var(--ff);font-weight:800;font-size:1rem;}
+    .sbox{background:var(--cream);border-radius:12px;padding:13px;border:1px solid var(--border);}
+    .sbox h4{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#aaa;margin-bottom:9px;}
+    .field{margin-bottom:9px;}.field label{display:block;font-weight:600;font-size:.76rem;margin-bottom:4px;color:#555;}
+    .field input{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:.82rem;background:var(--surface);color:var(--ink);outline:none;}
+    .field input:focus{border-color:var(--gold);}
+    .label-chip{display:flex;align-items:center;gap:6px;padding:6px 9px;background:var(--surface);border-radius:7px;border:1.5px solid var(--border);margin-bottom:5px;}
+    .label-chip-txt{flex:1;font-size:.82rem;font-weight:600;}
+    .label-chip-del{border:none;background:none;cursor:pointer;color:#ccc;font-size:.82rem;}.label-chip-del:hover{color:var(--rose);}
+    .saved-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;}
+    .saved-row{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:var(--warm);cursor:pointer;border:1.5px solid transparent;transition:all .14s;}
+    .saved-row:hover{border-color:var(--gold);}
+    /* Mode tabs */
+    .mode-tabs{display:flex;gap:5px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
+    .mode-tab{padding:6px 16px;border-radius:100px;border:1.5px solid var(--border);font-weight:600;font-size:.78rem;cursor:pointer;transition:all .14s;}
+    .mode-tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+    /* Canvas area */
+    .canvas-area{display:flex;flex-direction:column;overflow:hidden;}
+    .canvas-body{flex:1;overflow:hidden;position:relative;background:#111;display:flex;align-items:center;justify-content:center;min-height:400px;}
+    canvas{display:block;}
+    /* Dropzones */
+    .dropzone{
+      position:absolute;
+      border:2px dashed rgba(255,255,255,.85);
+      border-radius:8px;min-width:80px;min-height:36px;
+      display:flex;align-items:center;justify-content:center;
+      z-index:5;transition:border-color .15s;
+      /* Dark outline beneath the white dash makes it visible on any background */
+      outline:2px solid rgba(0,0,0,.45);
+      outline-offset:0px;
+      box-shadow:0 0 0 1px rgba(0,0,0,.3);
+      background:rgba(0,0,0,.08);
+    }
+    .dropzone::before{
+      content:'Drop here';
+      font-size:.68rem;font-weight:700;
+      color:rgba(255,255,255,.7);
+      text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 6px rgba(0,0,0,.8);
+      letter-spacing:.04em;
+      pointer-events:none;
+    }
+    .dropzone.filled::before{display:none;}
+    .dropzone.filled{border-color:rgba(74,124,111,.8);background:rgba(74,124,111,.15);}
+    .dropzone.wrong{border-color:rgba(200,88,74,.8);animation:shk .35s ease;}
+    /* Placed labels */
+    .placed-label{position:absolute;background:#fff;color:#000;padding:3px 8px;border-radius:5px;font-weight:700;font-size:.85rem;border:1px solid #333;z-index:6;cursor:default;}
+    /* Label sidebar */
+    .label-sidebar{position:absolute;right:0;top:0;bottom:0;width:0;background:#1a1a2e;overflow-y:auto;overflow-x:hidden;transition:width .3s;z-index:10;padding:10px 0;}
+    .label-sidebar.open{width:160px;padding:10px;}
+    .label-item{background:rgba(255,255,255,.12);color:#fff;margin-bottom:8px;padding:10px 12px;border-radius:8px;cursor:grab;font-size:.85rem;font-weight:600;user-select:none;}
+    .label-item:active{cursor:grabbing;}
+    /* Controls overlay */
+    .ctrl-overlay{position:absolute;top:10px;left:10px;z-index:20;display:flex;flex-direction:column;gap:6px;}
+    /* Torch radius slider */
+    .torch-ctrl{background:rgba(0,0,0,.6);border-radius:10px;padding:8px 12px;color:#fff;font-size:.75rem;display:flex;align-items:center;gap:8px;}
+    .torch-ctrl input{accent-color:var(--gold);}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 20px;border-radius:100px;font-size:.8rem;font-weight:600;z-index:9999;pointer-events:none;animation:tIn .25s ease;}
+    @keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">Teacher<span>Kit</span></a>
+  <span style="color:#bbb;font-size:.75rem">/ Image Blackout</span>
+  <div class="nav-right" id="nav-right"></div>
+</nav>
+<div class="layout" id="layout">
+  <div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 50px);opacity:.4">Loading…</div>
+</div>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+
+const fbApp=initializeApp(firebaseConfig), auth=getAuth(fbApp), db=getFirestore(fbApp);
+const COL=COLLECTIONS.blackout;
+
+let user=null, saved=[];
+let T = {  // current template
+  id:null, name:'',
+  image:'',       // base64
+  labels:[],      // [{text}]
+  zones:[],       // [{text, x, y, w, h}] — positions as % of image
+};
+let mode='editor'; // editor | view
+let torchRadius=90, torchX=200, torchY=200, showAll=false;
+let imgEl=null, imgW=0, imgH=0, imgOX=0, imgOY=0, canvW=0, canvH=0;
+let viewPlaced={}; // labelText -> {x,y} placed labels
+let dragLabel=null, dragOffX=0, dragOffY=0;
+// Edit mode drag zone state
+let editDragZone=null, editDragType=null, editDragSX=0, editDragSY=0, editDragOX=0, editDragOY=0, editDragOW=0, editDragOH=0;
+
+onAuthStateChanged(auth, async u=>{user=u; if(u){await loadSaved();buildUI();}else buildLoginUI();});
+
+async function loadSaved(){
+  const q=query(collection(db,COL),where('uid','==',user.uid));
+  const snap=await getDocs(q);
+  saved=snap.docs.map(d=>({id:d.id,...d.data()}));
+  saved.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+}
+async function saveTemplate(){
+  if(!T.name.trim()){toast('Enter a template name');return;}
+  if(!T.image){toast('Upload an image first');return;}
+  const id=T.id||(T.id='bo_'+Date.now());
+  try{
+    await setDoc(doc(db,COL,id),{uid:user.uid,...T,updatedAt:serverTimestamp()},{merge:true});
+    await loadSaved();renderSidebar();toast('Saved ✓');
+  }catch{toast('Save failed — check firebase-config.js');}
+}
+async function deleteTemplate(id){
+  await deleteDoc(doc(db,COL,id));
+  if(T.id===id){T={id:null,name:'',image:'',labels:[],zones:[]};}
+  await loadSaved();renderSidebar();toast('Deleted');
+}
+function loadTemplate(t){
+  T=JSON.parse(JSON.stringify(t));
+  viewPlaced={}; showAll=false;
+  renderSidebar(); enterMode(mode);
+}
+
+const uid=()=>Math.random().toString(36).slice(2,8);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function buildLoginUI(){
+  document.getElementById('layout').innerHTML=`
+<div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 50px)">
+  <div style="background:#fff;border-radius:24px;padding:44px 38px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(28,28,46,.15)">
+    <div style="font-size:3rem;margin-bottom:16px">🔦</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:10px">Image <span style="color:#e9a825">Blackout</span></h2>
+    <p style="color:#777;margin-bottom:24px;font-size:.88rem;line-height:1.6">Upload an image, define label drop-zones, then explore it with a moving torch. Students drag labels to the right spots.</p>
+    <button id="btn-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:11px;padding:13px;border-radius:12px;border:1.5px solid rgba(28,28,46,.1);background:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer">${gSVG()} Sign in with Google</button>
+    <p style="font-size:.7rem;color:#bbb;margin-top:14px"><a href="index.html" style="color:#aaa">← TeacherKit Hub</a></p>
+  </div>
+</div>`;
+  document.getElementById('btn-login')?.addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('Login failed')));
+}
+
+function buildUI(){
+  const u=user, init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  document.getElementById('nav-right').innerHTML=`
+    <div class="avatar">${u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`}</div>
+    <a class="btn btn-sm" href="index.html">← Hub</a>`;
+  document.getElementById('layout').innerHTML=`
+<div class="sidebar" id="sidebar"></div>
+<div class="canvas-area" id="canvas-area">
+  <div class="mode-tabs" id="mode-tabs">
+    <div class="mode-tab ${mode==='editor'?'active':''}" data-tab="editor">✏️ Editor</div>
+    <div class="mode-tab ${mode==='view'?'active':''}" data-tab="view">🔦 View Mode</div>
+  </div>
+  <div class="canvas-body" id="canvas-body">
+    <canvas id="main-canvas"></canvas>
+    <div class="ctrl-overlay" id="ctrl-overlay"></div>
+    <div class="label-sidebar" id="label-sidebar"></div>
+  </div>
+</div>`;
+  document.querySelectorAll('[data-tab]').forEach(t=>t.addEventListener('click',()=>{ mode=t.dataset.tab; enterMode(mode); renderTabs(); }));
+  renderSidebar();
+  enterMode(mode);
+}
+
+function renderTabs(){
+  document.querySelectorAll('[data-tab]').forEach(t=>t.classList.toggle('active',t.dataset.tab===mode));
+}
+
+function renderSidebar(){
+  const sb=document.getElementById('sidebar');if(!sb)return;
+  sb.innerHTML=`
+<div class="sb-title">🔦 Image Blackout</div>
+<div class="sbox"><h4>Template Name</h4>
+  <div class="field"><input id="t-name" value="${esc(T.name)}" placeholder="e.g. Solar System"/></div>
+  <button class="btn btn-gold btn-sm" id="btn-save-t" style="width:100%">💾 Save Template</button>
+</div>
+<div class="sbox"><h4>Image</h4>
+  <label class="btn btn-sm" style="cursor:pointer;width:100%;justify-content:center">📷 Upload Image<input type="file" accept="image/*" id="img-upload" style="display:none"/></label>
+  ${T.image?`<div style="margin-top:8px;font-size:.72rem;color:#aaa">Image loaded ✓</div>`:''}
+</div>
+<div class="sbox"><h4>Labels (${T.labels.length})</h4>
+  <p style="font-size:.72rem;color:#aaa;margin-bottom:8px">Add label names. In editor mode, drag them onto the image to place drop-zones.</p>
+  <div id="label-list">${T.labels.map((l,i)=>`<div class="label-chip"><span class="label-chip-txt">${esc(l.text)}</span><button class="label-chip-del" data-del-label="${i}">✕</button></div>`).join('')}</div>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <input id="new-label-inp" style="flex:1;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.8rem;background:#fff;color:var(--ink);outline:none" placeholder="Label text…"/>
+    <button class="btn btn-ink btn-sm" id="add-label-btn">+</button>
+  </div>
+</div>
+<div class="sbox"><h4>Zones (${T.zones.length})</h4>
+  <p style="font-size:.72rem;color:#aaa;margin-bottom:8px">In editor: drag a label from the right panel onto the dark canvas to place its drop-zone.</p>
+  ${T.zones.map((z,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#fff;border-radius:7px;border:1.5px solid var(--border);margin-bottom:5px;font-size:.78rem"><span style="flex:1;font-weight:600">${esc(z.text)}</span><span style="color:#aaa">${Math.round(z.x)}%,${Math.round(z.y)}%</span><button class="label-chip-del" data-del-zone="${i}">✕</button></div>`).join('')}
+  ${T.zones.length===0?`<div style="font-size:.72rem;color:#bbb;padding:4px 0">No zones yet — drag labels onto the image</div>`:''}
+  ${T.zones.length>0?`<button class="btn btn-rose btn-sm" id="clear-zones" style="margin-top:6px;width:100%">🗑 Clear All Zones</button>`:''}
+</div>
+<div class="sbox"><h4>Saved Templates (${saved.length})</h4>
+  <div class="saved-list">${saved.length?saved.map(s=>`<div class="saved-row" data-load-t="${s.id}"><div style="flex:1"><div style="font-size:.8rem;font-weight:600">${esc(s.name)}</div><div style="font-size:.68rem;color:#aaa">${s.labels?.length||0} labels · ${s.zones?.length||0} zones</div></div><button class="btn btn-rose btn-sm" data-del-t="${s.id}">🗑</button></div>`).join(''):`<p style="color:#bbb;font-size:.76rem;text-align:center;padding:8px">None yet</p>`}</div>
+</div>`;
+
+  document.getElementById('t-name')?.addEventListener('input',e=>T.name=e.target.value);
+  document.getElementById('btn-save-t')?.addEventListener('click',saveTemplate);
+  document.getElementById('img-upload')?.addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>{T.image=ev.target.result;renderSidebar();enterMode(mode);};r.readAsDataURL(f);
+  });
+  document.getElementById('add-label-btn')?.addEventListener('click',addLabel);
+  document.getElementById('new-label-inp')?.addEventListener('keydown',e=>{if(e.key==='Enter')addLabel();});
+  document.querySelectorAll('[data-del-label]').forEach(btn=>btn.addEventListener('click',()=>{T.labels.splice(+btn.dataset.delLabel,1);renderSidebar();enterMode(mode);}));
+  document.querySelectorAll('[data-del-zone]').forEach(btn=>btn.addEventListener('click',()=>{T.zones.splice(+btn.dataset.delZone,1);renderSidebar();enterMode(mode);}));
+  document.getElementById('clear-zones')?.addEventListener('click',()=>{T.zones=[];renderSidebar();enterMode(mode);});
+  document.querySelectorAll('[data-load-t]').forEach(row=>row.addEventListener('click',e=>{if(e.target.dataset.delT)return;const s=saved.find(x=>x.id===row.dataset.loadT);if(s)loadTemplate(s);}));
+  document.querySelectorAll('[data-del-t]').forEach(btn=>btn.addEventListener('click',async e=>{e.stopPropagation();await deleteTemplate(btn.dataset.delT);}));
+}
+
+function addLabel(){
+  const inp=document.getElementById('new-label-inp');
+  const txt=inp?.value.trim();if(!txt){toast('Enter a label');return;}
+  T.labels.push({text:txt});
+  inp.value='';
+  renderSidebar();enterMode(mode);
+}
+
+/* ── ENTER MODE ── */
+function enterMode(m){
+  const body=document.getElementById('canvas-body');if(!body)return;
+  // Clear overlays
+  document.getElementById('ctrl-overlay').innerHTML='';
+  document.getElementById('label-sidebar').className='label-sidebar';
+  document.getElementById('label-sidebar').innerHTML='';
+  // Remove any placed label divs
+  body.querySelectorAll('.placed-label,.dropzone').forEach(el=>el.remove());
+
+  if(!T.image){
+    document.getElementById('main-canvas').width=0;document.getElementById('main-canvas').height=0;
+    document.getElementById('ctrl-overlay').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:.9rem;font-weight:600;padding:16px">Upload an image to get started</div>';
+    return;
+  }
+  const img=new Image();
+  img.onload=()=>{
+    imgEl=img;
+    if(m==='editor') runEditor();
+    else runView();
+  };
+  img.src=T.image;
+}
+
+/* ── EDITOR MODE ── */
+function runEditor(){
+  const canvas=document.getElementById('main-canvas');
+  const body=document.getElementById('canvas-body');
+  const ctx=canvas.getContext('2d');
+  scaleToFit();
+
+  // Draw image fully visible
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(imgEl,imgOX,imgOY,imgW,imgH);
+    // Draw existing zones
+    T.zones.forEach(z=>{
+      const {px,py,pw,ph}=zoneToPixels(z);
+      // Draw dark shadow rect first so zone is visible on light images
+      ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=4;ctx.setLineDash([]);
+      ctx.strokeRect(px,py,pw,ph);
+      // Then the gold dashed line on top
+      ctx.strokeStyle='rgba(233,168,37,.95)';ctx.lineWidth=2;ctx.setLineDash([6,3]);
+      ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);
+      ctx.fillStyle='rgba(233,168,37,.2)';ctx.fillRect(px,py,pw,ph);
+      // Label with dark shadow for readability
+      ctx.fillStyle='rgba(0,0,0,.6)';ctx.font='bold 12px DM Sans,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(z.text,px+pw/2+1,py+ph/2+1);
+      ctx.fillStyle='#fff';
+      ctx.fillText(z.text,px+pw/2,py+ph/2);
+    });
+  }
+  draw();
+
+  // Right sidebar with draggable labels
+  const ls=document.getElementById('label-sidebar');
+  ls.className='label-sidebar open';
+  ls.innerHTML=`<div style="color:rgba(255,255,255,.6);font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Drag to canvas</div>`+
+    T.labels.filter(l=>!T.zones.find(z=>z.text===l.text)).map(l=>`<div class="label-item" draggable="true" data-lbl="${esc(l.text)}">${esc(l.text)}</div>`).join('');
+
+  // Controls
+  document.getElementById('ctrl-overlay').innerHTML=`
+<div style="color:rgba(255,255,255,.7);font-size:.75rem;background:rgba(0,0,0,.55);border-radius:8px;padding:7px 11px;">
+  Editor mode — drag labels from right panel onto image to set drop-zone positions.<br/>
+  <span style="opacity:.7">Zones can be repositioned by dragging once placed.</span>
+</div>`;
+
+  // Drag labels from sidebar onto canvas
+  canvas.addEventListener('dragover',e=>e.preventDefault());
+  canvas.addEventListener('drop',e=>{
+    e.preventDefault();
+    const lbl=e.dataTransfer.getData('text/plain');if(!lbl)return;
+    const rect=canvas.getBoundingClientRect();
+    const cx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const cy=(e.clientY-rect.top)*(canvas.height/rect.height);
+    // Convert to % of image
+    const px=(cx-imgOX)/imgW*100, py=(cy-imgOY)/imgH*100;
+    // Remove existing zone for this label (replace it)
+    T.zones=T.zones.filter(z=>z.text!==lbl);
+    T.zones.push({text:lbl,x:px,y:py,w:14,h:8});
+    renderSidebar();draw();
+  });
+  ls.querySelectorAll('[data-lbl]').forEach(item=>{
+    item.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',item.dataset.lbl));
+  });
+
+  // Zone drag on canvas (to reposition)
+  canvas.addEventListener('mousedown',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const cx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const cy=(e.clientY-rect.top)*(canvas.height/rect.height);
+    for(let i=T.zones.length-1;i>=0;i--){
+      const z=T.zones[i];const {px,py,pw,ph}=zoneToPixels(z);
+      if(cx>=px&&cx<=px+pw&&cy>=py&&cy<=py+ph){
+        editDragZone=i;editDragType='move';editDragSX=cx;editDragSY=cy;editDragOX=z.x;editDragOY=z.y;return;
+      }
+    }
+  });
+  window.addEventListener('mousemove',e=>{
+    if(editDragZone===null)return;
+    const rect=canvas.getBoundingClientRect();
+    const cx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const cy=(e.clientY-rect.top)*(canvas.height/rect.height);
+    const dx=(cx-editDragSX)/imgW*100, dy=(cy-editDragSY)/imgH*100;
+    T.zones[editDragZone].x=editDragOX+dx;T.zones[editDragZone].y=editDragOY+dy;
+    draw();
+  });
+  window.addEventListener('mouseup',()=>{if(editDragZone!==null){editDragZone=null;renderSidebar();}});
+}
+
+/* ── VIEW MODE (torch) ── */
+function runView(){
+  const canvas=document.getElementById('main-canvas');
+  const body=document.getElementById('canvas-body');
+  const ctx=canvas.getContext('2d');
+  scaleToFit();
+  showAll=false;
+  viewPlaced={};
+
+  // Build label sidebar (draggable labels)
+  const ls=document.getElementById('label-sidebar');
+  ls.className='label-sidebar open';
+  renderViewLabels(ls);
+
+  // Controls
+  document.getElementById('ctrl-overlay').innerHTML=`
+<div class="torch-ctrl">
+  <span>🔦</span>
+  <input type="range" id="torch-size" min="40" max="250" value="${torchRadius}" style="width:90px"/>
+  <span id="torch-size-lbl" style="min-width:30px">${torchRadius}px</span>
+  <button class="btn btn-sm" id="toggle-reveal" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2)">${showAll?'Hide':'Reveal All'}</button>
+</div>`;
+  document.getElementById('torch-size')?.addEventListener('input',e=>{torchRadius=+e.target.value;document.getElementById('torch-size-lbl').textContent=e.target.value+'px';drawView();});
+  document.getElementById('toggle-reveal')?.addEventListener('click',()=>{showAll=!showAll;document.getElementById('toggle-reveal').textContent=showAll?'Hide':'Reveal All';if(showAll){const ls=document.getElementById('label-sidebar');ls.className='label-sidebar open';renderViewLabels(ls);}drawView();});
+
+  // Mouse/touch for torch
+  canvas.addEventListener('mousemove',e=>{const rect=canvas.getBoundingClientRect();torchX=(e.clientX-rect.left)*(canvas.width/rect.width);torchY=(e.clientY-rect.top)*(canvas.height/rect.height);drawView();});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];const rect=canvas.getBoundingClientRect();torchX=(t.clientX-rect.left)*(canvas.width/rect.width);torchY=(t.clientY-rect.top)*(canvas.height/rect.height);drawView();},{passive:false});
+
+  // Drop zones (absolutely positioned over canvas)
+  function placeDropZones(){
+    body.querySelectorAll('.dropzone,.placed-label').forEach(el=>el.remove());
+    T.zones.forEach(z=>{
+      const {px,py,pw,ph}=zoneToPixels(z);
+      // Use getBoundingClientRect for both canvas and body to get accurate offset
+      const canvRect=canvas.getBoundingClientRect();
+      const bodyRect=body.getBoundingClientRect();
+      const scaleX=canvRect.width/canvas.width, scaleY=canvRect.height/canvas.height;
+      const dz=document.createElement('div');
+      dz.className='dropzone';
+      dz.style.left=(canvRect.left - bodyRect.left + px*scaleX)+'px';
+      dz.style.top=(canvRect.top  - bodyRect.top  + py*scaleY)+'px';
+      dz.style.width=(pw*scaleX)+'px';dz.style.height=(ph*scaleY)+'px';
+      dz.dataset.zone=z.text;
+      if(viewPlaced[z.text]){dz.classList.add('filled');dz.textContent=z.text;}
+      dz.addEventListener('dragover',e=>e.preventDefault());
+      dz.addEventListener('drop',e=>{
+        e.preventDefault();const lbl=e.dataTransfer.getData('text/plain');
+        if(lbl===z.text){viewPlaced[z.text]=true;renderViewLabels(ls);placeDropZones();checkAllDone();}
+        else{dz.classList.add('wrong');setTimeout(()=>dz.classList.remove('wrong'),600);toast('Not quite — try another spot');}
+      });
+      body.appendChild(dz);
+    });
+  }
+
+  function drawView(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(imgEl,imgOX,imgOY,imgW,imgH);
+    if(!showAll){
+      // Blackout overlay with circular cutout
+      ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.save();ctx.beginPath();ctx.arc(torchX,torchY,torchRadius,0,Math.PI*2);ctx.clip();
+      ctx.drawImage(imgEl,imgOX,imgOY,imgW,imgH);ctx.restore();
+    }
+    placeDropZones();
+  }
+  drawView();
+}
+
+function renderViewLabels(ls){
+  const unplaced=T.labels.filter(l=>!T.zones.find(z=>z.text===l.text&&viewPlaced[z.text]));
+  ls.innerHTML=`<div style="color:rgba(255,255,255,.5);font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Labels</div>`+
+    (unplaced.length?unplaced.map(l=>`<div class="label-item" draggable="true" data-lbl="${esc(l.text)}">${esc(l.text)}</div>`).join(''):`<div style="color:rgba(255,255,255,.5);font-size:.82rem">All placed! 🎉</div>`);
+  ls.querySelectorAll('[data-lbl]').forEach(item=>{item.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',item.dataset.lbl));});
+  // Touch drag
+  ls.querySelectorAll('[data-lbl]').forEach(item=>{
+    let clone=null;
+    item.addEventListener('touchstart',e=>{dragLabel=item.dataset.lbl;},{passive:true});
+    item.addEventListener('touchmove',e=>{
+      if(!dragLabel)return;
+      if(!clone){clone=item.cloneNode(true);clone.style.cssText='position:fixed;opacity:.7;pointer-events:none;z-index:9999;border-radius:8px;padding:10px 14px;background:rgba(255,255,255,.25);color:#fff;font-weight:700;';document.body.appendChild(clone);}
+      clone.style.left=(e.touches[0].clientX-50)+'px';clone.style.top=(e.touches[0].clientY-25)+'px';
+    },{passive:true});
+    item.addEventListener('touchend',e=>{
+      clone?.remove();clone=null;
+      if(!dragLabel)return;
+      const el=document.elementFromPoint(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
+      const dz=el?.closest('[data-zone]');
+      if(dz){
+        if(dragLabel===dz.dataset.zone){viewPlaced[dragLabel]=true;const ls2=document.getElementById('label-sidebar');renderViewLabels(ls2);const body=document.getElementById('canvas-body');body.querySelectorAll('.dropzone,.placed-label').forEach(el=>el.remove());runView();}
+        else{toast('Not quite!');dz.classList.add('wrong');setTimeout(()=>dz.classList.remove('wrong'),600);}
+      }
+      dragLabel=null;
+    });
+  });
+}
+
+function checkAllDone(){
+  const allDone=T.zones.every(z=>viewPlaced[z.text]);
+  if(allDone){
+    setTimeout(()=>{showAll=true;const cv=document.getElementById('main-canvas');const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(imgEl,imgOX,imgOY,imgW,imgH);toast('🎉 All labels placed correctly!');},300);
+  }
+}
+
+/* ── Canvas scaling helpers ── */
+function scaleToFit(){
+  const canvas=document.getElementById('main-canvas');
+  const body=document.getElementById('canvas-body');
+  const bw=body.clientWidth||800, bh=body.clientHeight||550;
+  if(!imgEl){canvas.width=bw;canvas.height=bh;return;}
+  canvas.width=bw;canvas.height=bh;canvW=bw;canvH=bh;
+  const r=Math.min(bw/imgEl.width,bh/imgEl.height,1);
+  imgW=Math.round(imgEl.width*r);imgH=Math.round(imgEl.height*r);
+  imgOX=Math.round((bw-imgW)/2);imgOY=Math.round((bh-imgH)/2);
+}
+function zoneToPixels(z){
+  return{px:imgOX+z.x/100*imgW, py:imgOY+z.y/100*imgH, pw:z.w/100*imgW, ph:z.h/100*imgH};
+}
+
+window.addEventListener('resize',()=>{ scaleToFit(); enterMode(mode); });
+
+function gSVG(){return `<svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`;}
+function toast(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000);}
+</script>
+</body>
+</html>

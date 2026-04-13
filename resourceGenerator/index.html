@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TeacherKit — Classroom Tools</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink:#1c1c2e; --cream:#faf8f3; --warm:#f2ede4;
+      --gold:#e9a825; --gold-dk:#c8891a;
+      --sage:#4a7c6f; --rose:#c8584a; --sky:#3d7eb5; --lav:#7563b8; --green:#4a8a2e;
+      --surface:#fff; --border:rgba(28,28,46,.10);
+      --shadow-sm:0 2px 8px rgba(28,28,46,.07);
+      --shadow-md:0 8px 28px rgba(28,28,46,.11);
+      --shadow-lg:0 24px 64px rgba(28,28,46,.16);
+      --radius:20px; --ff:'Fraunces',serif; --fb:'DM Sans',sans-serif;
+    }
+    body { font-family:var(--fb); background:var(--cream); color:var(--ink); min-height:100vh; }
+    .login-wrap {
+      min-height:100vh; display:grid; place-items:center;
+      background: radial-gradient(ellipse 70% 55% at 15% 105%, rgba(233,168,37,.18) 0%,transparent 60%),
+                  radial-gradient(ellipse 55% 40% at 85% 5%,  rgba(74,124,111,.14) 0%,transparent 60%), var(--cream);
+    }
+    .login-card { background:var(--surface); border-radius:28px; padding:52px 44px; max-width:430px; width:90%; text-align:center; box-shadow:var(--shadow-lg), 0 0 0 1px rgba(28,28,46,.05); }
+    .login-mark { width:72px; height:72px; border-radius:20px; background:var(--ink); margin:0 auto 24px; display:flex; align-items:center; justify-content:center; font-size:2.2rem; }
+    .login-card h1 { font-family:var(--ff); font-size:2rem; font-weight:900; margin-bottom:10px; }
+    .login-card h1 span { color:var(--gold); }
+    .login-card > p { color:#777; font-size:.92rem; line-height:1.6; margin-bottom:32px; }
+    .google-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:12px; padding:14px 20px; border-radius:14px; border:1.5px solid var(--border); background:var(--surface); font-family:var(--fb); font-weight:600; font-size:.95rem; cursor:pointer; transition:all .2s; }
+    .google-btn:hover { border-color:var(--ink); box-shadow:var(--shadow-md); transform:translateY(-1px); }
+    .login-note { font-size:.75rem; color:#aaa; margin-top:18px; }
+    .nav { position:sticky; top:0; z-index:200; display:flex; align-items:center; gap:14px; padding:13px 28px; background:var(--surface); border-bottom:1px solid var(--border); box-shadow:var(--shadow-sm); }
+    .logo { font-family:var(--ff); font-size:1.35rem; font-weight:900; letter-spacing:-.3px; text-decoration:none; color:var(--ink); }
+    .logo span { color:var(--gold); }
+    .nav-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+    .avatar { width:34px; height:34px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.78rem; overflow:hidden; cursor:pointer; }
+    .avatar img { width:100%; height:100%; object-fit:cover; }
+    .btn { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:100px; border:1.5px solid var(--border); font-family:var(--fb); font-weight:600; font-size:.82rem; cursor:pointer; transition:all .18s; background:transparent; color:var(--ink); text-decoration:none; }
+    .btn:hover { border-color:var(--ink); background:var(--warm); }
+    .btn-sm { padding:6px 12px; font-size:.75rem; }
+    .dashboard { max-width:1080px; margin:0 auto; padding:44px 28px; }
+    .dash-header { margin-bottom:44px; }
+    .dash-header h2 { font-family:var(--ff); font-size:2.4rem; font-weight:900; line-height:1.1; }
+    .dash-header h2 em { color:var(--gold); font-style:normal; }
+    .dash-header p { color:#777; margin-top:8px; font-size:.95rem; }
+    .tools-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:22px; }
+    .tool-card { background:var(--surface); border-radius:var(--radius); border:1px solid var(--border); overflow:hidden; transition:all .22s; text-decoration:none; color:inherit; display:flex; flex-direction:column; }
+    .tool-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
+    .tool-card:hover .card-cta { background:var(--ink); color:#fff; }
+    .card-accent { height:5px; width:100%; }
+    .card-inner { padding:24px 24px 20px; flex:1; display:flex; flex-direction:column; }
+    .card-icon { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:16px; }
+    .card-title { font-family:var(--ff); font-size:1.2rem; font-weight:700; margin-bottom:6px; }
+    .card-desc { font-size:.85rem; color:#777; line-height:1.55; flex:1; }
+    .card-footer { padding:14px 24px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .card-saves { font-size:.75rem; color:#aaa; }
+    .card-cta { padding:7px 16px; border-radius:100px; background:var(--warm); color:var(--ink); font-family:var(--fb); font-weight:700; font-size:.78rem; transition:all .18s; }
+    .c-quiz     { --accent:var(--gold);  --icon-bg:rgba(233,168,37,.14); }
+    .c-bingo    { --accent:var(--sage);  --icon-bg:rgba(74,124,111,.14); }
+    .c-dragsort { --accent:var(--rose);  --icon-bg:rgba(200,88,74,.14);  }
+    .c-spotter  { --accent:var(--lav);   --icon-bg:rgba(117,99,184,.14); }
+    .c-board    { --accent:var(--green); --icon-bg:rgba(74,138,46,.14);  }
+    .c-blackout { --accent:#f59e0b;       --icon-bg:rgba(245,158,11,.14); }
+    .tool-card .card-accent { background:var(--accent); }
+    .tool-card .card-icon   { background:var(--icon-bg); }
+    .toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 22px; border-radius:100px; font-size:.85rem; font-weight:600; z-index:9999; animation:tIn .3s ease; pointer-events:none; }
+    @keyframes tIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+
+let user = null, loading = true, counts = {};
+
+onAuthStateChanged(auth, async u => { user=u; loading=false; if(u) await loadCounts(); render(); });
+
+async function loadCounts() {
+  await Promise.all(Object.entries(COLLECTIONS).map(async ([key, col]) => {
+    try { const snap = await getDocs(query(collection(db,col), where('uid','==',user.uid))); counts[key] = snap.size; }
+    catch { counts[key] = 0; }
+  }));
+}
+
+const TOOLS = [
+  { id:'quiz',     href:'slide-quiz.html',    icon:'🎯', title:'Slide Quiz',     cta:'Open Quiz Editor',
+    desc:'Design interactive question slides with drag-and-drop layout, images, shapes, and step-by-step answer reveals. Full PowerPoint-style control.' },
+  { id:'bingo',    href:'bingo-maker.html',   icon:'🟩', title:'Bingo Maker',    cta:'Open Bingo Maker',
+    desc:'Upload images and generate randomised bingo cards for your whole class. Save image sets and regenerate with one click.' },
+  { id:'dragSort', href:'drag-sort.html',     icon:'💬', title:'Drag & Sort',    cta:'Open Drag & Sort',
+    desc:'Build categorisation activities for any topic. Fully editable — change categories, statements, and correct answers at any time.' },
+  { id:'spotter',  href:'image-spotter.html', icon:'🕵️', title:'Image Spotter',  cta:'Open Image Spotter',
+    desc:'Upload a screenshot, mark hotspots, and let students identify suspicious areas. Perfect for digital literacy and phishing lessons.' },
+  { id:'board',    href:'board-game.html',    icon:'🎲', title:'Board Game',     cta:'Open Board Game',
+    desc:'A fully dynamic snakes & ladders board. Configure snakes, ladders, and info popups on any square. Supports up to 6 players.' },
+  { id:'blackout', href:'image-blackout.html', icon:'🔦', title:'Image Blackout',   cta:'Open Blackout',
+    desc:'Upload an image, place label drop-zones, then explore it with a torch in the dark. Students drag labels to the correct spots.' },
+];
+
+function gSVG() { return `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`; }
+
+const root = document.getElementById('root');
+function render() {
+  if (loading) { root.innerHTML=`<div style="display:grid;place-items:center;height:100vh;opacity:.4;font-family:'DM Sans',sans-serif">Loading…</div>`; return; }
+  if (!user)   { root.innerHTML=renderLogin(); document.getElementById('btn-login')?.addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('Login failed — check firebase-config.js'))); return; }
+  root.innerHTML = renderApp();
+  document.getElementById('btn-logout')?.addEventListener('click',()=>signOut(auth).then(()=>{user=null;counts={};render();}));
+}
+
+function renderLogin() { return `
+<div class="login-wrap"><div class="login-card">
+  <div class="login-mark">🎓</div>
+  <h1>Teacher<span>Kit</span></h1>
+  <p>Five powerful classroom tools in one place — interactive quizzes, bingo, drag &amp; sort, image analysis, and a board game. Everything saved to the cloud.</p>
+  <button class="google-btn" id="btn-login">${gSVG()} Sign in with Google</button>
+  <p class="login-note">Secure Google login · Your data is private to your account · <a href="https://github.com" style="color:#aaa">GitHub Pages</a></p>
+</div></div>`; }
+
+function renderApp() {
+  const n=user.displayName?.split(' ')[0]||'Teacher', ph=user.photoURL;
+  const init=(user.displayName||'T').split(' ').map(x=>x[0]).join('').slice(0,2);
+  const hr=new Date().getHours(), greet=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  return `
+<nav class="nav">
+  <a class="logo" href="index.html">Teacher<span>Kit</span></a>
+  <div class="nav-right">
+    <div class="avatar">${ph?`<img src="${ph}" alt="${init}"/>`:`${init}`}</div>
+    <button class="btn btn-sm" id="btn-logout">Sign out</button>
+  </div>
+</nav>
+<div class="dashboard">
+  <div class="dash-header">
+    <h2>${greet}, <em>${n}</em> 👋</h2>
+    <p>Pick a tool to create or continue a classroom activity.</p>
+  </div>
+  <div class="tools-grid">
+    ${TOOLS.map(t=>`
+    <a class="tool-card c-${t.id.toLowerCase().replace('dragsort','dragsort').replace('dragSort','dragsort')}" href="${t.href}">
+      <div class="card-accent"></div>
+      <div class="card-inner">
+        <div class="card-icon">${t.icon}</div>
+        <div class="card-title">${t.title}</div>
+        <div class="card-desc">${t.desc}</div>
+      </div>
+      <div class="card-footer">
+        <span class="card-saves">${counts[t.id]??0} saved</span>
+        <span class="card-cta">${t.cta} →</span>
+      </div>
+    </a>`).join('')}
+  </div>
+</div>`; }
+
+function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200); }
+render();
+</script>
+</body>
+</html>

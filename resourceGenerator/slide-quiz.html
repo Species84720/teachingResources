@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Slide Quiz — TeacherKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;
+      --gold:#e9a825;--gold-dk:#c8891a;--rose:#c8584a;--sage:#4a7c6f;--sky:#3d7eb5;--lav:#7563b8;
+      --surface:#fff;--border:rgba(28,28,46,.10);
+      --ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;
+    }
+    body{font-family:var(--fb);background:var(--cream);color:var(--ink);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+    .topbar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 14px;flex-shrink:0;box-shadow:0 2px 6px rgba(28,28,46,.06);z-index:100;}
+    .t-logo{font-family:var(--ff);font-weight:900;font-size:.95rem;text-decoration:none;color:var(--ink);}
+    .t-logo span{color:var(--gold);}
+    .t-sep{width:1px;height:20px;background:var(--border);}
+    #quiz-name-inp{flex:1;max-width:280px;font-family:var(--ff);font-size:.95rem;font-weight:700;border:none;background:transparent;outline:none;color:var(--ink);}
+    #quiz-name-inp::placeholder{color:#ccc;font-weight:400;}
+    .t-right{margin-left:auto;display:flex;gap:7px;align-items:center;}
+    .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.78rem;cursor:pointer;transition:all .16s;background:transparent;color:var(--ink);}
+    .btn:hover{border-color:var(--ink);background:var(--warm);}
+    .btn-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+    .btn-gold:hover{background:var(--gold-dk);}
+    .btn-ink{background:var(--ink);color:#fff;border-color:var(--ink);}
+    .btn-ink:hover{background:#2d2d4a;}
+    .btn-danger{background:var(--rose);color:#fff;border-color:var(--rose);}
+    .btn-sage{background:var(--sage);color:#fff;border-color:var(--sage);}
+    .btn-sm{padding:4px 10px;font-size:.72rem;}
+    .btn:disabled{opacity:.38;pointer-events:none;}
+    .avatar{width:28px;height:28px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.68rem;overflow:hidden;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+
+    /* 3-panel layout */
+    .editor-body{flex:1;display:grid;grid-template-columns:210px 1fr 260px;overflow:hidden;min-height:0;}
+
+    /* Slide list */
+    .slide-list{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+    .sl-hd{padding:10px 12px;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#aaa;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .sl-scroll{flex:1;overflow-y:auto;padding:7px;}
+    .sl-item{border-radius:9px;margin-bottom:5px;border:2px solid transparent;cursor:pointer;transition:all .14s;overflow:hidden;position:relative;}
+    .sl-item:hover{border-color:rgba(233,168,37,.5);}
+    .sl-item.active{border-color:var(--gold);}
+    .sl-preview{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;font-size:.58rem;font-weight:600;padding:5px;}
+    .sl-num{position:absolute;top:3px;left:5px;font-size:.58rem;font-weight:800;opacity:.6;}
+    .sl-x{position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:rgba(200,88,74,.85);color:#fff;border:none;font-size:.65rem;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1;}
+    .sl-item:hover .sl-x{display:flex;}
+
+    /* Canvas area */
+    .canvas-wrap{background:#22223a;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:12px 16px;overflow:auto;gap:8px;min-height:0;}
+    .canvas-tb{display:flex;gap:6px;align-items:center;background:rgba(255,255,255,.07);border-radius:10px;padding:5px 10px;flex-shrink:0;flex-wrap:wrap;}
+    .ct-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:7px;border:none;background:rgba(255,255,255,.1);color:#fff;font-family:var(--fb);font-weight:600;font-size:.72rem;cursor:pointer;transition:background .14s;}
+    .ct-btn:hover{background:rgba(255,255,255,.22);}
+    .ct-sep{width:1px;height:14px;background:rgba(255,255,255,.15);}
+
+    /* Stage — FIXED SIZE, never changes */
+    .stage-outer{position:relative;flex-shrink:0;border-radius:10px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.55);}
+    .stage{position:relative;overflow:hidden;user-select:none;}
+
+    /* Elements */
+    .el{position:absolute;cursor:move;}
+    .el.sel{outline:2px solid var(--gold);outline-offset:1px;}
+    .el-rh{position:absolute;bottom:-5px;right:-5px;width:10px;height:10px;background:var(--gold);border:2px solid #1c1c2e;border-radius:2px;cursor:nwse-resize;display:none;}
+    .el.sel .el-rh{display:block;}
+    .el-text{font-size:inherit;line-height:1.3;word-break:break-word;overflow:hidden;white-space:pre-wrap;}
+    .el-img{width:100%;height:100%;object-fit:contain;pointer-events:none;display:block;}
+
+    /* Step badge shown in editor for step-gated elements */
+    .el-step-badge{position:absolute;top:-8px;left:-2px;background:var(--gold);color:var(--ink);font-size:.55rem;font-weight:900;padding:1px 5px;border-radius:4px;white-space:nowrap;pointer-events:none;}
+
+    /* Properties */
+    .props{background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;}
+    .pp{padding:13px 14px;border-bottom:1px solid var(--border);}
+    .pp h4{font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#bbb;margin-bottom:10px;}
+    .pp-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+    .pp-lbl{font-size:.74rem;font-weight:600;color:#666;min-width:52px;}
+    .pp-in{flex:1;padding:5px 9px;border:1.5px solid var(--border);border-radius:7px;font-family:var(--fb);font-size:.8rem;background:var(--cream);color:var(--ink);outline:none;}
+    .pp-in:focus{border-color:var(--gold);background:var(--surface);}
+    .swatches{display:flex;gap:5px;flex-wrap:wrap;}
+    .sw{width:22px;height:22px;border-radius:5px;cursor:pointer;border:2px solid transparent;transition:all .13s;flex-shrink:0;}
+    .sw.on{border-color:var(--ink);transform:scale(1.18);}
+    .font-opts{display:flex;flex-wrap:wrap;gap:4px;}
+    .fo{padding:3px 9px;border-radius:6px;border:1.5px solid var(--border);font-size:.72rem;font-weight:600;cursor:pointer;transition:all .13s;}
+    .fo.on{border-color:var(--ink);background:var(--ink);color:#fff;}
+    textarea.pp-in{resize:none;min-height:52px;}
+    .pp-range{width:100%;accent-color:var(--gold);cursor:pointer;margin-top:3px;}
+    /* Steps */
+    .steps-box{display:flex;flex-direction:column;gap:5px;}
+    .st-row{display:flex;align-items:center;gap:5px;background:var(--warm);border-radius:7px;padding:6px 8px;}
+    .st-n{width:18px;height:18px;border-radius:5px;flex-shrink:0;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:800;}
+    .st-in{flex:1;border:none;background:transparent;font-family:var(--fb);font-size:.8rem;color:var(--ink);outline:none;}
+    .st-x{border:none;background:none;cursor:pointer;color:#ccc;font-size:.8rem;padding:0 2px;}
+    .st-x:hover{color:var(--rose);}
+    .add-step{width:100%;padding:6px;border:1.5px dashed rgba(28,28,46,.15);border-radius:7px;background:none;cursor:pointer;font-family:var(--fb);font-size:.74rem;color:#bbb;transition:all .14s;}
+    .add-step:hover{border-color:var(--gold);color:var(--gold-dk);}
+
+    /* Present overlay */
+    .present{position:fixed;inset:0;background:#111122;z-index:5000;display:flex;flex-direction:column;color:#fff;}
+    .p-nav{padding:11px 22px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .p-title{font-family:var(--ff);font-size:1rem;font-weight:700;}
+    .p-body{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:20px;}
+    .p-controls{padding:14px 22px;display:flex;align-items:center;gap:10px;justify-content:center;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+    .pc{padding:9px 20px;border-radius:100px;border:1.5px solid rgba(255,255,255,.18);background:transparent;color:#fff;font-family:var(--fb);font-weight:600;font-size:.84rem;cursor:pointer;transition:all .15s;}
+    .pc:hover{background:rgba(255,255,255,.1);}
+    .pc-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+    .pc-gold:hover{background:var(--gold-dk);}
+    .pv-grid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:32px;}
+    .num-grid{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:660px;}
+    .ntile{width:80px;height:80px;border-radius:14px;background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-family:var(--ff);font-size:1.8rem;font-weight:900;cursor:pointer;transition:all .18s;}
+    .ntile:hover:not(.done){border-color:var(--gold);background:rgba(233,168,37,.14);transform:scale(1.06);}
+    .ntile.done{opacity:.22;pointer-events:none;}
+
+    /* Step indicator panel */
+    .step-indicator{display:flex;gap:8px;align-items:center;padding:8px 16px;background:rgba(255,255,255,.05);border-radius:8px;}
+    .step-pip{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s;}
+    .step-pip.revealed{background:var(--gold);}
+
+    .mo{position:fixed;inset:0;background:rgba(28,28,46,.55);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:3000;padding:18px;animation:fi .18s ease;}
+    .mo-box{background:var(--surface);border-radius:20px;padding:30px;max-width:460px;width:100%;box-shadow:0 24px 60px rgba(28,28,46,.22);animation:su .2s ease;}
+    .mo-box h3{font-family:var(--ff);font-size:1.3rem;font-weight:800;margin-bottom:6px;}
+    .mo-box p{color:#777;font-size:.84rem;margin-bottom:18px;}
+    .mo-acts{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;}
+    .field{margin-bottom:14px;}
+    .field label{display:block;font-weight:600;font-size:.76rem;margin-bottom:4px;color:#555;}
+    .field input,.field select{width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:.85rem;background:var(--cream);color:var(--ink);outline:none;}
+    .field input:focus,.field select:focus{border-color:var(--gold);background:var(--surface);}
+    .tp-pills{display:flex;gap:7px;}
+    .tp{padding:7px 15px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .14s;}
+    .tp.on{border-color:var(--ink);background:var(--ink);color:#fff;}
+    .ql-row{display:flex;align-items:center;gap:9px;padding:9px 12px;background:var(--warm);border-radius:9px;border:1.5px solid transparent;cursor:pointer;margin-bottom:6px;transition:all .14s;}
+    .ql-row:hover{border-color:var(--gold);background:rgba(233,168,37,.07);}
+    .ql-name{flex:1;font-weight:700;font-size:.84rem;}
+    .ql-meta{font-size:.7rem;color:#aaa;}
+    .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 18px;border-radius:100px;font-size:.8rem;font-weight:600;z-index:9999;animation:tIn .22s ease;pointer-events:none;}
+    @keyframes fi{from{opacity:0}to{opacity:1}}
+    @keyframes su{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(9px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+const COL   = COLLECTIONS.quiz;
+
+/* ══ CONSTANTS ══ */
+const SW = 800, SH = 450; // logical slide dimensions
+
+// Scale: computed from canvas-wrap size; falls back to window size
+let _scale = null;
+function getScale() {
+  // Always recompute from wrap if available
+  const wrap = document.getElementById('canvas-wrap');
+  if (wrap && wrap.clientWidth > 100) {
+    const avW = wrap.clientWidth  - 32;
+    const avH = wrap.clientHeight - 60;
+    const s = Math.max(0.3, Math.min(avW / SW, avH / SH, 1));
+    _scale = s;
+    return s;
+  }
+  // Fallback: use window size minus sidebar widths (210 + 260 + padding)
+  if (_scale) return _scale;
+  const avW = window.innerWidth - 210 - 260 - 64;
+  const avH = window.innerHeight - 52 - 80;
+  _scale = Math.max(0.3, Math.min(avW / SW, avH / SH, 1));
+  return _scale;
+}
+window.addEventListener('resize', () => { _scale = null; render(); });
+
+const BG_SWATCHES     = ['#1c1c2e','#4a7c6f','#c8584a','#3d7eb5','#7563b8','#2d4a1e','#4a2d1e','#1a3a4a','#2a2a2a','#ffffff'];
+const ACCENT_SWATCHES = ['#e9a825','#ffffff','#4ae8c4','#ff7f4a','#a0e840','#e840a0','#4ab4e8'];
+const FONTS           = [['Fraunces','Serif'],['DM Sans','Sans'],['Georgia','Classic'],['Courier New','Mono']];
+
+/* ══ STATE ══ */
+let S = {
+  user: null, loading: true,
+  quizzes: [], quiz: null, slideIdx: 0,
+  selId: null,
+  modal: null,
+  newType: 'numbers',
+  presenting: false,
+  pView: 'grid',
+  pQIdx: null,
+  answered: new Set(),
+  revealStep: 0,  // 0=question visible only, 1=step1 revealed, etc.
+};
+
+/* ══ AUTH ══ */
+onAuthStateChanged(auth, async u => {
+  S.user = u; S.loading = false;
+  if (u) await loadQuizzes();
+  render();
+});
+
+/* ══ FIRESTORE ══ */
+async function loadQuizzes() {
+  try {
+    const q = query(collection(db, COL), where('uid','==', S.user.uid));
+    const snap = await getDocs(q);
+    S.quizzes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    S.quizzes.sort((a,b) => (b.updatedAt?.seconds||0) - (a.updatedAt?.seconds||0));
+  } catch { toast('Firebase error — check firebase-config.js'); }
+}
+async function saveQuiz() {
+  if (!S.quiz) return;
+  S.quiz.name = document.getElementById('quiz-name-inp')?.value?.trim() || S.quiz.name || 'Untitled';
+  try {
+    await setDoc(doc(db, COL, S.quiz.id), { ...S.quiz, uid: S.user.uid, updatedAt: serverTimestamp() }, { merge: true });
+    await loadQuizzes(); toast('Saved ✓');
+  } catch { toast('Save failed'); }
+}
+async function delQuiz(id) {
+  try {
+    await deleteDoc(doc(db, COL, id));
+    if (S.quiz?.id === id) { S.quiz = null; S.slideIdx = 0; S.selId = null; }
+    await loadQuizzes(); toast('Deleted');
+  } catch { toast('Delete failed'); }
+}
+
+/* ══ HELPERS ══ */
+const uid  = () => Math.random().toString(36).slice(2,9);
+const esc  = s  => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const lum  = hex => { const c=hex.replace('#',''); return c.length===6?(parseInt(c.slice(0,2),16)*299+parseInt(c.slice(2,4),16)*587+parseInt(c.slice(4,6),16)*114)/1000:128; };
+
+function mkSlide() {
+  return {
+    id: uid(), bg: '#1c1c2e', steps: ['Answer step 1'],
+    elements: [
+      { id:uid(), type:'text', x:60, y:80, w:680, h:120, text:'Your question here…',
+        fontSize:38, fontFamily:'Fraunces', color:'#ffffff', align:'center', bold:true, visStep:0 },
+    ]
+  };
+}
+
+// visStep: 0 = always visible; 1+ = show only when revealStep >= visStep
+function mkEl(type) {
+  const base = { id:uid(), x:80, y:80, w:400, h:80, visStep: 0 };
+  if (type==='text')  return { ...base, type:'text',  text:'Text block', fontSize:22, fontFamily:'DM Sans', color:'#ffffff', align:'left', bold:false };
+  if (type==='image') return { ...base, type:'image', w:320, h:200, src:'', fit:'contain' };
+  if (type==='shape') return { ...base, type:'shape', w:200, h:120, shape:'rect', fill:'#e9a825', opacity:.85 };
+  if (type==='answer') return { ...base, type:'answer', w:600, h:56, text:'Answer text', fontSize:20, fontFamily:'DM Sans', color:'#ffffff', accentColor:'#e9a825', visStep:1 };
+  return base;
+}
+
+/* ══ RENDER MASTER ══ */
+const appEl = document.getElementById('app');
+function render() {
+  if (S.loading) { appEl.innerHTML=`<div style="display:grid;place-items:center;height:100vh;opacity:.4;">Loading…</div>`; return; }
+  if (!S.user)   { appEl.innerHTML = renderLoginPage(); bindLogin(); return; }
+  if (S.presenting) { appEl.innerHTML = renderPresent(); bindPresent(); return; }
+  appEl.innerHTML = renderEditor();
+  bindEditor();
+  if (S.modal) openModal();
+}
+
+function renderLoginPage() { return `
+<div style="display:grid;place-items:center;min-height:100vh;background:radial-gradient(ellipse 70% 55% at 15% 105%,rgba(233,168,37,.18) 0%,transparent 60%),#faf8f3;">
+  <div style="background:#fff;border-radius:26px;padding:48px 40px;max-width:410px;width:90%;text-align:center;box-shadow:0 22px 60px rgba(28,28,46,.16);">
+    <div style="font-size:3rem;margin-bottom:16px;">🎯</div>
+    <h1 style="font-family:'Fraunces',serif;font-size:1.9rem;font-weight:900;margin-bottom:9px;">Slide <span style="color:#e9a825">Quiz</span></h1>
+    <p style="color:#777;margin-bottom:26px;font-size:.9rem;line-height:1.6">Design slides with drag-and-drop elements. Set which elements appear at each reveal step.</p>
+    <button id="btn-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:11px;padding:13px;border-radius:12px;border:1.5px solid rgba(28,28,46,.1);background:#fff;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.92rem;cursor:pointer;">
+      ${gSVG()} Sign in with Google
+    </button>
+    <p style="font-size:.7rem;color:#bbb;margin-top:14px;"><a href="index.html" style="color:#aaa">← Back to TeacherKit Hub</a></p>
+  </div>
+</div>`; }
+function bindLogin() { document.getElementById('btn-login')?.addEventListener('click', () => signInWithPopup(auth, new GoogleAuthProvider()).catch(() => toast('Login failed'))); }
+
+function renderEditor() {
+  const slide = S.quiz?.questions?.[S.slideIdx];
+  const u = S.user;
+  const init = (u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  const sc = getScale();
+  return `
+<div class="topbar">
+  <a class="t-logo" href="index.html">Teacher<span>Kit</span></a>
+  <div class="t-sep"></div>
+  <input id="quiz-name-inp" placeholder="Untitled Quiz" value="${S.quiz ? esc(S.quiz.name) : ''}" ${!S.quiz?'disabled':''}/>
+  <div class="t-right">
+    ${S.quiz ? `
+      <button class="btn btn-sm" id="btn-add-slide">+ Slide</button>
+      <button class="btn btn-gold btn-sm" id="btn-save">💾 Save</button>
+      <button class="btn btn-ink btn-sm" id="btn-present">▶ Present</button>
+    ` : ''}
+    <button class="btn btn-sm" id="btn-list">📂 My Quizzes</button>
+    <button class="btn btn-sm" id="btn-new">+ New</button>
+    <div class="avatar">${u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`}</div>
+  </div>
+</div>
+<div class="editor-body">
+  <!-- Slide list -->
+  <div class="slide-list">
+    <div class="sl-hd">Slides <span style="background:rgba(28,28,46,.08);border-radius:5px;padding:1px 6px;font-size:.6rem">${S.quiz?.questions?.length||0}</span></div>
+    <div class="sl-scroll" id="sl-scroll">
+      ${!S.quiz
+        ? `<p style="padding:14px;color:#ccc;font-size:.76rem;text-align:center">Open or create a quiz to begin.</p>`
+        : (S.quiz.questions||[]).map((sl,i) => `
+          <div class="sl-item ${i===S.slideIdx?'active':''}" data-si="${i}">
+            <div class="sl-preview" style="background:${sl.bg||'#1c1c2e'}">
+              <span class="sl-num" style="color:rgba(255,255,255,.5)">${i+1}</span>
+              <span style="color:rgba(255,255,255,.45);max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.6rem">
+                ${esc((sl.elements||[]).find(e=>e.type==='text')?.text || 'Slide '+(i+1))}
+              </span>
+              ${S.quiz.questions.length>1?`<button class="sl-x" data-del-si="${i}">×</button>`:''}
+            </div>
+          </div>`).join('')
+      }
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas-wrap" id="canvas-wrap">
+    ${S.quiz && slide ? `
+    <div class="canvas-tb">
+      <button class="ct-btn" data-add="text">T Text</button>
+      <button class="ct-btn" data-add="image">🖼 Image</button>
+      <button class="ct-btn" data-add="answer">✦ Answer</button>
+      <button class="ct-btn" data-add="shape">■ Shape</button>
+      <div class="ct-sep"></div>
+      <button class="ct-btn" id="ct-dup" ${!S.selId?'disabled':''}>⧉ Dup</button>
+      <button class="ct-btn" id="ct-del" ${!S.selId?'disabled':''} style="color:#f08080;">🗑 Del</button>
+      <div class="ct-sep"></div>
+      <span style="color:#94a3b8;font-size:.7rem">Steps: ${(slide.steps||[]).length} | Step-gated elements: ${(slide.elements||[]).filter(e=>e.visStep>0).length}</span>
+    </div>
+    <div class="stage-outer" id="stage-outer">
+      <div class="stage" id="stage" style="width:${Math.round(SW*sc)}px;height:${Math.round(SH*sc)}px;background:${slide.backgroundImage?`url(${slide.backgroundImage}) center/cover`:slide.bg||'#1c1c2e'}">
+        ${renderSlideEls(slide, sc, true)}
+      </div>
+    </div>` : `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;color:rgba(255,255,255,.25);">
+      <div style="font-size:3rem">🎯</div>
+      <div style="font-size:.95rem;font-weight:600">Open or create a quiz to start designing</div>
+    </div>`}
+  </div>
+
+  <!-- Properties -->
+  <div class="props" id="props-panel">
+    ${S.quiz && slide ? renderProps(slide, sc) : ''}
+  </div>
+</div>`;
+}
+
+function renderSlideEls(slide, sc, editable) {
+  return (slide.elements||[]).map(el => renderOneEl(el, sc, editable, S.selId === el.id)).join('');
+}
+
+function renderOneEl(el, sc, editable, sel) {
+  const s = `position:absolute;left:${el.x*sc}px;top:${el.y*sc}px;width:${el.w*sc}px;height:${el.h*sc}px;`;
+  const selCls = sel ? 'sel' : '';
+  const rh = sel ? `<div class="el-rh" data-rh="${el.id}"></div>` : '';
+  // Show step badge in editor for step-gated elements
+  const stepBadge = (editable && el.visStep > 0) ? `<div class="el-step-badge">Step ${el.visStep}</div>` : '';
+
+  if (el.type==='text' || el.type==='question') {
+    const fs = (el.fontSize||24)*sc;
+    const jc = el.align==='center'?'center':el.align==='right'?'flex-end':'flex-start';
+    return `<div class="el el-text ${selCls}" data-el="${el.id}" style="${s}display:flex;align-items:center;justify-content:${jc};padding:4px;font-family:'${el.fontFamily||'DM Sans'}',serif,sans-serif;font-size:${fs}px;color:${el.color||'#fff'};text-align:${el.align||'left'};font-weight:${el.bold?700:400};"
+      ${editable?`contenteditable="true"`:''}
+    >${esc(el.text||'')}${rh}${stepBadge}</div>`;
+  }
+  if (el.type==='answer') {
+    const fs = (el.fontSize||18)*sc;
+    const acc = el.accentColor||'#e9a825';
+    const numColor = lum(acc)>155 ? '#1c1c2e':'#fff';
+    return `<div class="el ${selCls}" data-el="${el.id}" style="${s}display:flex;align-items:center;gap:${8*sc}px;background:rgba(255,255,255,.1);border:1.5px solid ${acc};border-radius:${7*sc}px;padding:${8*sc}px ${12*sc}px;font-family:'${el.fontFamily||'DM Sans'}',sans-serif;font-size:${fs}px;color:${el.color||'#fff'};font-weight:600;">
+      <div style="width:${22*sc}px;height:${22*sc}px;border-radius:${5*sc}px;flex-shrink:0;background:${acc};color:${numColor};display:flex;align-items:center;justify-content:center;font-size:${11*sc}px;font-weight:800;">${el.visStep||1}</div>
+      ${esc(el.text||'Answer text')}
+      ${rh}${stepBadge}
+    </div>`;
+  }
+  if (el.type==='image') {
+    return `<div class="el ${selCls}" data-el="${el.id}" style="${s}">
+      ${el.src
+        ? `<img class="el-img" src="${el.src}" style="object-fit:${el.fit||'contain'}"/>`
+        : `<div style="width:100%;height:100%;background:rgba(255,255,255,.07);border:2px dashed rgba(255,255,255,.18);border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.35);font-size:${11*sc}px;">Upload in Properties →</div>`}
+      ${rh}${stepBadge}
+    </div>`;
+  }
+  if (el.type==='shape') {
+    const br = el.shape==='circle'?'50%':el.shape==='rounded'?`${12*sc}px`:'3px';
+    return `<div class="el ${selCls}" data-el="${el.id}" style="${s}background:${el.fill||'#e9a825'};opacity:${el.opacity||.85};border-radius:${br};">${rh}${stepBadge}</div>`;
+  }
+  return '';
+}
+
+function renderProps(slide, sc) {
+  const el = slide?.elements?.find(e => e.id === S.selId);
+  const maxStep = (slide.steps||[]).length;
+  return `
+  <div class="pp">
+    <h4>Background</h4>
+    <div class="swatches">
+      ${BG_SWATCHES.map(c=>`<div class="sw ${slide.bg===c?'on':''}" style="background:${c};${c==='#ffffff'?'border:2px solid #ddd':''}" data-bg="${c}"></div>`).join('')}
+      <label title="Custom color"><div class="sw" style="background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border:2px solid #ddd"></div><input type="color" id="cp-bg" value="${slide.bg||'#1c1c2e'}" style="display:none"/></label>
+    </div>
+    <div class="pp-row" style="margin-top:8px">
+      <span class="pp-lbl">BG Image</span>
+      <label class="btn btn-sm" style="cursor:pointer">Upload<input type="file" accept="image/*" id="bg-img-file" style="display:none"/></label>
+      ${slide.backgroundImage?`<button class="btn btn-sm btn-danger" id="rm-bg-img">✕</button>`:''}
+    </div>
+  </div>
+
+  <div class="pp">
+    <h4>Reveal Steps</h4>
+    <p style="font-size:.7rem;color:#aaa;margin-bottom:8px">Add steps here. Assign elements to "Show at step N" in their properties below. During presentation, click "Reveal Step" to show each one.</p>
+    <div class="steps-box" id="steps-box">
+      ${(slide.steps||[]).map((s,i)=>`
+        <div class="st-row">
+          <div class="st-n">${i+1}</div>
+          <input class="st-in" data-step="${i}" value="${esc(s)}" placeholder="Step ${i+1} label…"/>
+          ${(slide.steps||[]).length>1?`<button class="st-x" data-del-step="${i}">×</button>`:''}
+        </div>`).join('')}
+    </div>
+    <button class="add-step" id="add-step">+ Add Reveal Step</button>
+  </div>
+
+  ${el ? `
+  <div class="pp">
+    <h4>Element — ${el.type}</h4>
+
+    <!-- Reveal step — shown for ALL element types -->
+    <div class="pp-row" style="background:rgba(233,168,37,.08);border-radius:8px;padding:6px 8px;margin-bottom:12px;">
+      <span class="pp-lbl" style="color:var(--gold-dk)">Show at</span>
+      <select class="pp-in" id="el-visstep" style="flex:1">
+        <option value="0" ${el.visStep===0?'selected':''}>Always (question)</option>
+        ${(slide.steps||[]).map((s,i)=>`<option value="${i+1}" ${el.visStep===(i+1)?'selected':''}>Step ${i+1}${s?': '+s.slice(0,20):''}</option>`).join('')}
+      </select>
+    </div>
+
+    ${(el.type==='text'||el.type==='answer') ? `
+      <div class="pp-row"><span class="pp-lbl">Text</span><textarea class="pp-in" id="el-text" rows="2">${esc(el.text||'')}</textarea></div>
+      <div class="pp-row"><span class="pp-lbl">Size</span><input class="pp-range" type="range" id="el-fs" min="10" max="72" value="${el.fontSize||22}"/><span id="el-fs-val" style="font-size:.7rem;color:#999;width:28px">${el.fontSize||22}</span></div>
+      <div class="pp-row"><span class="pp-lbl">Color</span><input type="color" id="el-color" value="${el.color||'#ffffff'}" style="width:32px;height:26px;border:none;border-radius:5px;cursor:pointer"/></div>
+      <div style="margin-bottom:9px"><div class="pp-lbl" style="margin-bottom:5px">Font</div><div class="font-opts">${FONTS.map(([f,l])=>`<div class="fo ${el.fontFamily===f?'on':''}" data-font="${f}" style="font-family:'${f}',serif">${l}</div>`).join('')}</div></div>
+      <div class="pp-row"><span class="pp-lbl">Align</span>${['left','center','right'].map(a=>`<button class="btn btn-sm ${el.align===a?'btn-ink':''}" data-align="${a}">${a[0].toUpperCase()}</button>`).join('')}</div>
+      <div class="pp-row"><span class="pp-lbl">Bold</span><button class="btn btn-sm ${el.bold?'btn-ink':''}" id="el-bold">B</button></div>
+    ` : ''}
+    ${el.type==='answer'?`
+      <div class="pp-row"><span class="pp-lbl">Accent</span><div class="swatches">${ACCENT_SWATCHES.map(c=>`<div class="sw ${el.accentColor===c?'on':''}" style="background:${c};${c==='#ffffff'?'border:2px solid #ccc':''}" data-acc="${c}"></div>`).join('')}</div></div>
+    ` : ''}
+    ${el.type==='image'?`
+      <div style="margin-bottom:9px"><div class="pp-lbl" style="margin-bottom:5px">Image</div><input type="file" accept="image/*" id="el-imgfile" style="font-size:.72rem;width:100%"/></div>
+      <div class="pp-row"><span class="pp-lbl">Fit</span>${['contain','cover','fill'].map(f=>`<button class="btn btn-sm ${el.fit===f?'btn-ink':''}" data-fit="${f}">${f}</button>`).join('')}</div>
+    ` : ''}
+    ${el.type==='shape'?`
+      <div class="pp-row"><span class="pp-lbl">Fill</span><input type="color" id="el-fill" value="${el.fill||'#e9a825'}" style="width:32px;height:26px;border:none;border-radius:5px;cursor:pointer"/></div>
+      <div class="pp-row"><span class="pp-lbl">Shape</span>${['rect','rounded','circle'].map(sh=>`<button class="btn btn-sm ${el.shape===sh?'btn-ink':''}" data-shape="${sh}">${sh}</button>`).join('')}</div>
+      <div class="pp-row"><span class="pp-lbl">Opacity</span><input class="pp-range" type="range" id="el-opacity" min="10" max="100" value="${Math.round((el.opacity||.85)*100)}"/><span id="el-op-val" style="font-size:.7rem;color:#999;width:28px">${Math.round((el.opacity||.85)*100)}%</span></div>
+    ` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+      ${['x','y','w','h'].map(k=>`<div><div class="pp-lbl" style="margin-bottom:3px">${k.toUpperCase()}</div><input class="pp-in" type="number" data-pos="${k}" value="${Math.round(el[k]||0)}" style="font-size:.76rem"/></div>`).join('')}
+    </div>
+    <button class="btn btn-danger btn-sm" id="del-el" style="width:100%;margin-top:10px">🗑 Delete Element</button>
+  </div>
+  ` : `<div class="pp" style="color:#bbb;font-size:.76rem">Click an element to edit its properties. Use "Show at" to control when it appears during the reveal.</div>`}
+  `; }
+
+/* ─── PRESENT ─── */
+function renderPresent() {
+  const q = S.quiz;
+  if (S.pView === 'grid') return `
+<div class="present">
+  <div class="p-nav">
+    <div class="p-title">${esc(q.name)}</div>
+    <button class="pc" id="p-exit">✕ Exit</button>
+  </div>
+  <div class="pv-grid">
+    <h2 style="font-family:'Fraunces',serif;font-size:1.9rem;font-weight:900;opacity:.9">Choose a question</h2>
+    <div class="num-grid">
+      ${q.questions.map((_,i)=>`<div class="ntile ${S.answered.has(i)?'done':''}" data-pq="${i}">${i+1}</div>`).join('')}
+    </div>
+    <div style="opacity:.35;font-size:.82rem">${S.answered.size} / ${q.questions.length} completed</div>
+  </div>
+</div>`;
+
+  if (S.pView === 'question') {
+    const slide = q.questions[S.pQIdx];
+    const totalSteps = (slide.steps||[]).length;
+    // Scale for present: fit the stage to the window
+    const avW = window.innerWidth - 40;
+    const avH = window.innerHeight - 140;
+    const pSc = Math.min(avW/SW, avH/SH, 1);
+
+    return `
+<div class="present">
+  <div class="p-nav">
+    <button class="pc" id="p-back">← Back</button>
+    <div class="p-title">Question ${S.pQIdx+1} of ${q.questions.length}</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      ${totalSteps > 0 ? `
+        <div class="step-indicator">
+          <span style="font-size:.72rem;opacity:.6;margin-right:4px">Steps:</span>
+          ${Array.from({length:totalSteps},(_,i)=>`<div class="step-pip ${S.revealStep>i?'revealed':''}"></div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  </div>
+  <div class="p-body" id="p-body">
+    <div style="position:relative;width:${Math.round(SW*pSc)}px;height:${Math.round(SH*pSc)}px;background:${slide.backgroundImage?`url(${slide.backgroundImage}) center/cover`:slide.bg||'#1c1c2e'};border-radius:14px;overflow:hidden;box-shadow:0 20px 64px rgba(0,0,0,.55);">
+      ${renderPresentSlide(slide, pSc)}
+    </div>
+  </div>
+  <div class="p-controls">
+    ${S.revealStep === 0 && totalSteps > 0 ? `
+      <button class="pc pc-gold" id="p-reveal">✨ Reveal Step 1 →</button>
+    ` : S.revealStep < totalSteps ? `
+      <span style="opacity:.45;font-size:.8rem">Step ${S.revealStep} shown</span>
+      <button class="pc pc-gold" id="p-next-step">✨ Reveal Step ${S.revealStep+1} →</button>
+    ` : totalSteps > 0 ? `
+      <span style="opacity:.45;font-size:.8rem">All ${totalSteps} steps revealed ✓</span>
+    ` : `
+      <span style="opacity:.45;font-size:.8rem">No reveal steps on this slide</span>
+    `}
+  </div>
+</div>`;
+  }
+  return '';
+}
+
+function renderPresentSlide(slide, sc) {
+  return (slide.elements||[]).map(el => {
+    const visible = el.visStep === 0 || S.revealStep >= el.visStep;
+    const anim = visible && el.visStep > 0 ? 'animation:fadeInUp .45s ease;' : '';
+    const vis  = visible ? '' : 'opacity:0;pointer-events:none;';
+
+    const s = `position:absolute;left:${el.x*sc}px;top:${el.y*sc}px;width:${el.w*sc}px;height:${el.h*sc}px;transition:opacity .4s ease;${vis}${anim}`;
+
+    if (el.type==='text' || el.type==='question') {
+      const fs=(el.fontSize||24)*sc;
+      const jc=el.align==='center'?'center':el.align==='right'?'flex-end':'flex-start';
+      return `<div style="${s}display:flex;align-items:center;justify-content:${jc};padding:4px;font-family:'${el.fontFamily||'DM Sans'}',serif,sans-serif;font-size:${fs}px;color:${el.color||'#fff'};text-align:${el.align||'left'};font-weight:${el.bold?700:400};">${esc(el.text||'')}</div>`;
+    }
+    if (el.type==='answer') {
+      const fs=(el.fontSize||18)*sc;
+      const acc=el.accentColor||'#e9a825';
+      const nc=lum(acc)>155?'#1c1c2e':'#fff';
+      return `<div style="${s}display:flex;align-items:center;gap:${8*sc}px;background:rgba(255,255,255,.1);border:1.5px solid ${acc};border-radius:${7*sc}px;padding:${8*sc}px ${12*sc}px;font-family:'${el.fontFamily||'DM Sans'}',sans-serif;font-size:${fs}px;color:${el.color||'#fff'};font-weight:600;">
+        <div style="width:${22*sc}px;height:${22*sc}px;border-radius:${5*sc}px;flex-shrink:0;background:${acc};color:${nc};display:flex;align-items:center;justify-content:center;font-size:${11*sc}px;font-weight:800;">${el.visStep||1}</div>
+        ${esc(el.text||'')}
+      </div>`;
+    }
+    if (el.type==='image') {
+      const outerVis = visible ? '' : 'display:none;';
+      return `<div style="position:absolute;left:${el.x*sc}px;top:${el.y*sc}px;width:${el.w*sc}px;height:${el.h*sc}px;${outerVis}${anim}">${el.src?`<img src="${el.src}" style="width:100%;height:100%;object-fit:${el.fit||'contain'};display:block"/>`:`<div style="width:100%;height:100%;background:rgba(255,255,255,.07);border:2px dashed rgba(255,255,255,.18);border-radius:6px;"></div>`}</div>`;
+    }
+    if (el.type==='shape') {
+      const br=el.shape==='circle'?'50%':el.shape==='rounded'?`${12*sc}px`:'3px';
+      // Use wrapper div for visibility (opacity:0/1), inner div for shape opacity/fill
+      // This prevents shape's own opacity from overriding the visibility opacity
+      const outerVis = visible ? 'display:block' : 'display:none';
+      return `<div style="position:absolute;left:${el.x*sc}px;top:${el.y*sc}px;width:${el.w*sc}px;height:${el.h*sc}px;${outerVis};${anim}"><div style="width:100%;height:100%;background:${el.fill||'#e9a825'};opacity:${el.opacity||.85};border-radius:${br};"></div></div>`;
+    }
+    return '';
+  }).join('');
+}
+
+/* ══ BIND EDITOR ══ */
+function bindEditor() {
+  const slide = S.quiz?.questions?.[S.slideIdx];
+
+  document.getElementById('btn-new')?.addEventListener('click',  () => { S.modal='new'; openModal(); });
+  document.getElementById('btn-list')?.addEventListener('click', async () => { await loadQuizzes(); S.modal='list'; openModal(); });
+  document.getElementById('btn-save')?.addEventListener('click', saveQuiz);
+  document.getElementById('btn-present')?.addEventListener('click', () => {
+    S.presenting=true; S.pView='grid'; S.answered=new Set(); S.revealStep=0; render();
+  });
+  document.getElementById('btn-add-slide')?.addEventListener('click', () => {
+    if (!S.quiz) return;
+    S.quiz.questions.push(mkSlide());
+    S.slideIdx = S.quiz.questions.length-1; S.selId=null; render();
+  });
+
+  document.querySelectorAll('[data-si]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.delSi !== undefined) return;
+      S.slideIdx = +el.dataset.si; S.selId=null; render();
+    });
+  });
+  document.querySelectorAll('[data-del-si]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      S.quiz.questions.splice(+btn.dataset.delSi,1);
+      S.slideIdx = Math.min(S.slideIdx, S.quiz.questions.length-1);
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-add]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!slide) return;
+      const el = mkEl(btn.dataset.add);
+      slide.elements.push(el);
+      S.selId = el.id; render();
+    });
+  });
+  document.getElementById('ct-dup')?.addEventListener('click', () => {
+    if (!slide || !S.selId) return;
+    const orig = slide.elements.find(e=>e.id===S.selId); if (!orig) return;
+    const copy = JSON.parse(JSON.stringify(orig));
+    copy.id=uid(); copy.x+=24; copy.y+=24;
+    slide.elements.push(copy); S.selId=copy.id; render();
+  });
+  document.getElementById('ct-del')?.addEventListener('click', () => {
+    if (!slide || !S.selId) return;
+    slide.elements = slide.elements.filter(e=>e.id!==S.selId);
+    S.selId=null; render();
+  });
+
+  /* Stage drag/resize */
+  const stage = document.getElementById('stage');
+  if (stage && slide) {
+    stage.addEventListener('mousedown', e => {
+      const elDiv = e.target.closest('[data-el]');
+      if (!elDiv) { S.selId=null; render(); return; }
+      const elId = elDiv.dataset.el;
+      if (S.selId !== elId) { S.selId = elId; render(); }
+      const el = slide.elements.find(x=>x.id===elId); if (!el) return;
+      const sc = getScale();
+      const ox=el.x, oy=el.y, ow=el.w, oh=el.h;
+      const sx=e.clientX, sy=e.clientY;
+      const isRH = e.target.dataset.rh;
+      function move(mv) {
+        const dx=(mv.clientX-sx)/sc, dy=(mv.clientY-sy)/sc;
+        if (isRH) { el.w=Math.max(40,ow+dx); el.h=Math.max(20,oh+dy); }
+        else       { el.x=Math.max(0,ox+dx);  el.y=Math.max(0,oy+dy); }
+        elDiv.style.left  =`${el.x*sc}px`;
+        elDiv.style.top   =`${el.y*sc}px`;
+        elDiv.style.width =`${el.w*sc}px`;
+        elDiv.style.height=`${el.h*sc}px`;
+        // update step badge position
+        const badge = elDiv.querySelector('.el-step-badge');
+        if (badge) { /* stays relative */ }
+      }
+      function up() { window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); }
+      window.addEventListener('mousemove',move);
+      window.addEventListener('mouseup',up);
+      e.preventDefault();
+    });
+    // Inline text editing — update on blur
+    stage.querySelectorAll('[contenteditable="true"]').forEach(div => {
+      div.addEventListener('blur', () => {
+        const elId = div.dataset.el;
+        const el = slide.elements.find(x=>x.id===elId); if (!el) return;
+        el.text = div.innerText;
+      });
+    });
+  }
+
+  if (slide) bindProps(slide);
+}
+
+function bindProps(slide) {
+  const el = slide?.elements?.find(e=>e.id===S.selId);
+
+  document.querySelectorAll('[data-bg]').forEach(sw => sw.addEventListener('click', ()=>{ slide.bg=sw.dataset.bg; render(); }));
+  document.getElementById('cp-bg')?.addEventListener('input', e=>{ slide.bg=e.target.value; const stage=document.getElementById('stage'); if(stage)stage.style.background=e.target.value; });
+  document.getElementById('cp-bg')?.addEventListener('change', ()=>render());
+  document.getElementById('bg-img-file')?.addEventListener('change', e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{slide.backgroundImage=ev.target.result;render();}; r.readAsDataURL(f); });
+  document.getElementById('rm-bg-img')?.addEventListener('click', ()=>{ delete slide.backgroundImage; render(); });
+
+  document.querySelectorAll('[data-step]').forEach(inp => inp.addEventListener('input', () => { slide.steps[+inp.dataset.step] = inp.value; }));
+  document.querySelectorAll('[data-del-step]').forEach(btn => btn.addEventListener('click',()=>{ slide.steps.splice(+btn.dataset.delStep,1); render(); }));
+  document.getElementById('add-step')?.addEventListener('click',()=>{ if(!slide.steps) slide.steps=[]; slide.steps.push(''); render(); setTimeout(()=>{ const inputs=document.querySelectorAll('[data-step]'); inputs[inputs.length-1]?.focus(); },40); });
+
+  if (!el) return;
+
+  // visStep
+  document.getElementById('el-visstep')?.addEventListener('change', e=>{ el.visStep=+e.target.value; render(); });
+
+  document.getElementById('el-text')?.addEventListener('input', e => { el.text=e.target.value; const stage=document.getElementById('stage'); const div=stage?.querySelector(`[data-el="${el.id}"]`); if(div) div.innerText=e.target.value; });
+  document.getElementById('el-fs')?.addEventListener('input', e => { el.fontSize=+e.target.value; document.getElementById('el-fs-val').textContent=e.target.value; render(); });
+  document.getElementById('el-color')?.addEventListener('input', e => { el.color=e.target.value; render(); });
+  document.querySelectorAll('[data-font]').forEach(p=>p.addEventListener('click',()=>{ el.fontFamily=p.dataset.font; render(); }));
+  document.querySelectorAll('[data-align]').forEach(b=>b.addEventListener('click',()=>{ el.align=b.dataset.align; render(); }));
+  document.getElementById('el-bold')?.addEventListener('click',()=>{ el.bold=!el.bold; render(); });
+  document.querySelectorAll('[data-acc]').forEach(sw=>sw.addEventListener('click',()=>{ el.accentColor=sw.dataset.acc; render(); }));
+  document.getElementById('el-imgfile')?.addEventListener('change', e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{el.src=ev.target.result;render();}; r.readAsDataURL(f); });
+  document.querySelectorAll('[data-fit]').forEach(b=>b.addEventListener('click',()=>{ el.fit=b.dataset.fit; render(); }));
+  document.getElementById('el-fill')?.addEventListener('input', e=>{ el.fill=e.target.value; render(); });
+  document.querySelectorAll('[data-shape]').forEach(b=>b.addEventListener('click',()=>{ el.shape=b.dataset.shape; render(); }));
+  document.getElementById('el-opacity')?.addEventListener('input', e=>{ el.opacity=+e.target.value/100; document.getElementById('el-op-val').textContent=e.target.value+'%'; render(); });
+  document.querySelectorAll('[data-pos]').forEach(inp=>inp.addEventListener('change',()=>{ el[inp.dataset.pos]=+inp.value; render(); }));
+  document.getElementById('del-el')?.addEventListener('click',()=>{ slide.elements=slide.elements.filter(e=>e.id!==S.selId); S.selId=null; render(); });
+}
+
+/* ══ BIND PRESENT ══ */
+function bindPresent() {
+  document.getElementById('p-exit')?.addEventListener('click', ()=>{ S.presenting=false; render(); });
+  document.querySelectorAll('[data-pq]').forEach(tile => {
+    tile.addEventListener('click', () => {
+      S.pQIdx=+tile.dataset.pq; S.pView='question'; S.revealStep=0; render();
+    });
+  });
+  document.getElementById('p-back')?.addEventListener('click', () => {
+    const na = new Set(S.answered); na.add(S.pQIdx);
+    S.answered=na; S.pView='grid'; render();
+  });
+  document.getElementById('p-reveal')?.addEventListener('click', () => {
+    S.revealStep=1; render();
+  });
+  document.getElementById('p-next-step')?.addEventListener('click', () => {
+    S.revealStep++; render();
+  });
+}
+
+/* ══ MODALS ══ */
+function openModal() {
+  document.getElementById('modal-mount')?.remove();
+  const m = document.createElement('div'); m.id='modal-mount';
+
+  if (S.modal === 'new') {
+    m.innerHTML=`<div class="mo" id="mo-bg"><div class="mo-box">
+      <h3>New Quiz</h3><p>Give your quiz a name.</p>
+      <div class="field"><label>Quiz Name</label><input id="nq-name" placeholder="e.g. Phishing Awareness" autofocus/></div>
+      <div class="mo-acts"><button class="btn btn-sm" id="mc">Cancel</button><button class="btn btn-gold" id="mk">Create →</button></div>
+    </div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('#mo-bg').addEventListener('click', e=>{ if(e.target.id==='mo-bg') closeModal(); });
+    m.querySelector('#mc').addEventListener('click', closeModal);
+    m.querySelector('#mk').addEventListener('click', () => {
+      const name = m.querySelector('#nq-name').value.trim() || 'Untitled Quiz';
+      S.quiz = { id:'q_'+uid(), name, questions:[mkSlide()] };
+      S.slideIdx=0; S.selId=null; closeModal();
+    });
+    setTimeout(()=>m.querySelector('#nq-name')?.focus(), 60);
+  }
+
+  if (S.modal === 'list') {
+    const rows = S.quizzes.length
+      ? S.quizzes.map(q=>`<div class="ql-row" data-ql="${q.id}">
+          <div style="flex:1"><div class="ql-name">${esc(q.name)}</div><div class="ql-meta">${q.questions?.length||0} slides</div></div>
+          <button class="btn btn-danger btn-sm" data-dq="${q.id}">🗑</button>
+        </div>`).join('')
+      : '<p style="color:#bbb;text-align:center;padding:16px;font-size:.82rem">No quizzes saved yet.</p>';
+    m.innerHTML=`<div class="mo" id="mo-bg"><div class="mo-box" style="max-width:520px">
+      <h3>My Quizzes</h3><p>Select a quiz to open it.</p>
+      <div style="max-height:300px;overflow-y:auto">${rows}</div>
+      <div class="mo-acts"><button class="btn btn-sm" id="mc">Close</button></div>
+    </div></div>`;
+    document.body.appendChild(m);
+    m.querySelector('#mo-bg').addEventListener('click', e=>{ if(e.target.id==='mo-bg') closeModal(); });
+    m.querySelector('#mc').addEventListener('click', closeModal);
+    m.querySelectorAll('[data-ql]').forEach(row=>row.addEventListener('click', e=>{
+      if (e.target.dataset.dq) return;
+      const q=S.quizzes.find(x=>x.id===row.dataset.ql);
+      if(q){ S.quiz=JSON.parse(JSON.stringify(q)); S.slideIdx=0; S.selId=null; closeModal(); }
+    }));
+    m.querySelectorAll('[data-dq]').forEach(btn=>btn.addEventListener('click', async e=>{ e.stopPropagation(); await delQuiz(btn.dataset.dq); S.modal='list'; await loadQuizzes(); openModal(); }));
+  }
+}
+function closeModal() { S.modal=null; document.getElementById('modal-mount')?.remove(); render(); }
+
+function gSVG() { return `<svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`; }
+function toast(msg) { document.querySelectorAll('.toast').forEach(t=>t.remove()); const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000); }
+
+render();
+// Re-render once after first paint so canvas-wrap has real dimensions
+let _initialRenderDone = false;
+requestAnimationFrame(() => {
+  if (!_initialRenderDone) {
+    _initialRenderDone = true;
+    _scale = null;
+    render();
+    // Second pass in case font loading caused reflow
+    setTimeout(() => { _scale = null; render(); }, 150);
+  }
+});
+</script>
+</body>
+</html>

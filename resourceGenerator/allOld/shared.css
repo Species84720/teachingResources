@@ -1,0 +1,155 @@
+/* ═══════════════════════════════════════════════════════
+   TeacherKit — Shared Design System
+   Aesthetic: Warm editorial · Playful-professional
+═══════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --ink:       #1c1c2e;
+  --cream:     #faf8f3;
+  --warm:      #f2ede4;
+  --gold:      #e9a825;
+  --gold-lt:   #f5c84a;
+  --gold-dk:   #c8891a;
+  --sage:      #4a7c6f;
+  --rose:      #c8584a;
+  --sky:       #3d7eb5;
+  --lavender:  #7563b8;
+  --surface:   #ffffff;
+  --border:    rgba(28,28,46,.10);
+  --shadow-sm: 0 2px 8px rgba(28,28,46,.08);
+  --shadow-md: 0 6px 24px rgba(28,28,46,.12);
+  --ff:        'Fraunces', serif;
+  --fb:        'DM Sans', sans-serif;
+}
+
+/* ── Base Reset ──────────────────────────── */
+*, *::before, *::after { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
+
+body { 
+  font-family: var(--fb); 
+  background: var(--cream); 
+  color: var(--ink); 
+  min-height: 100vh; 
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--ff);
+  font-weight: 700;
+}
+
+/* ── Navigation Bar ──────────────────────── */
+.nav { 
+  position: sticky; 
+  top: 0; 
+  z-index: 100; 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  padding: 15px 30px; 
+  background: var(--surface); 
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.logo { 
+  font-family: var(--ff); 
+  font-size: 1.5rem; 
+  font-weight: 900; 
+  color: var(--ink); 
+  text-decoration: none; 
+  letter-spacing: -0.5px;
+}
+
+.logo span { 
+  color: var(--gold); 
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* ── Buttons ─────────────────────────────── */
+.btn { 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 8px;
+  padding: 10px 20px; 
+  border: none; 
+  border-radius: 8px; 
+  font-family: var(--fb); 
+  font-weight: 600; 
+  font-size: 1rem;
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  text-decoration: none; 
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary { 
+  background: var(--ink); 
+  color: var(--surface); 
+}
+
+.btn-primary:hover { 
+  background: #333344; 
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-gold { 
+  background: var(--gold); 
+  color: var(--surface); 
+}
+
+.btn-gold:hover { 
+  background: var(--gold-dk); 
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-sm { 
+  padding: 8px 14px; 
+  font-size: 0.9rem; 
+  background: var(--warm); 
+  color: var(--ink); 
+}
+
+.btn-sm:hover {
+  background: #e6e0d4;
+}
+
+/* ── Inputs & Forms ──────────────────────── */
+input[type="text"], 
+input[type="number"], 
+select {
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--fb);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  background: var(--surface);
+}
+
+input[type="text"]:focus, 
+input[type="number"]:focus, 
+select:focus {
+  border-color: var(--gold);
+}
+
+/* ── Scrollbar ───────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(28,28,46,.15); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(28,28,46,.3); }

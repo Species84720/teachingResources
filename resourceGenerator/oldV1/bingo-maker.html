@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Bingo Maker — TeacherKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    :root {
+      --ink:#1c1c2e; --cream:#faf8f3; --warm:#f2ede4;
+      --gold:#e9a825; --gold-dk:#c8891a;
+      --sage:#4a7c6f; --sage-lt:rgba(74,124,111,.12);
+      --rose:#c8584a; --surface:#fff; --border:rgba(28,28,46,.10);
+      --ff:'Fraunces',serif; --fb:'DM Sans',sans-serif;
+    }
+    body { font-family:var(--fb); background:var(--cream); color:var(--ink); min-height:100vh; }
+
+    /* Nav */
+    .nav { position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:13px 24px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06); }
+    .logo { font-family:var(--ff);font-weight:900;font-size:1.25rem;text-decoration:none;color:var(--ink); }
+    .logo span { color:var(--gold); }
+    .nav-right { margin-left:auto;display:flex;gap:8px;align-items:center; }
+    .btn { display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .17s;background:transparent;color:var(--ink); }
+    .btn:hover { border-color:var(--ink);background:var(--warm); }
+    .btn-gold { background:var(--gold);color:var(--ink);border-color:var(--gold); }
+    .btn-gold:hover { background:var(--gold-dk); }
+    .btn-primary { background:var(--ink);color:#fff;border-color:var(--ink); }
+    .btn-sage { background:var(--sage);color:#fff;border-color:var(--sage); }
+    .btn-danger { background:var(--rose);color:#fff;border-color:var(--rose); }
+    .btn-sm { padding:5px 12px;font-size:.76rem; }
+    .btn:disabled { opacity:.4;pointer-events:none; }
+    .avatar { width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;overflow:hidden; }
+    .avatar img { width:100%;height:100%;object-fit:cover; }
+
+    /* Main */
+    .main { display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 54px); }
+
+    /* Sidebar */
+    .sidebar { background:var(--surface);border-right:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:18px; }
+    .sidebar h3 { font-family:var(--ff);font-size:1.1rem;font-weight:700;margin-bottom:4px; }
+
+    .section-card { background:var(--cream);border-radius:12px;padding:16px;border:1px solid var(--border); }
+    .section-card h4 { font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:12px; }
+
+    .field { margin-bottom:12px; }
+    .field label { display:block;font-weight:600;font-size:.78rem;margin-bottom:4px;color:#555; }
+    .field input { width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:.88rem;background:var(--surface);color:var(--ink);outline:none; }
+    .field input:focus { border-color:var(--gold); }
+    .grid-row { display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px; }
+    .grid-row span { text-align:center;font-weight:700;color:#aaa; }
+
+    /* Image upload zone */
+    .upload-zone {
+      border:2px dashed rgba(74,124,111,.4);
+      border-radius:10px;padding:18px;text-align:center;cursor:pointer;
+      transition:all .2s;background:var(--sage-lt);
+    }
+    .upload-zone:hover { border-color:var(--sage);background:rgba(74,124,111,.18); }
+    .upload-zone p { font-size:.8rem;color:#777;margin-top:6px; }
+    .upload-zone input[type=file] { display:none; }
+
+    /* Image chips */
+    .image-chips { display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:140px;overflow-y:auto; }
+    .img-chip {
+      width:52px;height:52px;border-radius:8px;overflow:hidden;
+      border:2px solid var(--border);position:relative;cursor:pointer;
+      transition:all .15s;
+    }
+    .img-chip:hover { border-color:var(--rose); }
+    .img-chip img { width:100%;height:100%;object-fit:cover; }
+    .img-chip-del {
+      position:absolute;inset:0;background:rgba(200,88,74,.7);
+      display:none;align-items:center;justify-content:center;
+      color:#fff;font-size:1.2rem;
+    }
+    .img-chip:hover .img-chip-del { display:flex; }
+
+    /* Saved sets */
+    .saved-set-list { display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto; }
+    .saved-set {
+      display:flex;align-items:center;gap:8px;padding:8px 10px;
+      border-radius:8px;background:var(--warm);cursor:pointer;
+      border:1.5px solid transparent;transition:all .15s;
+    }
+    .saved-set:hover { border-color:var(--gold);background:rgba(233,168,37,.08); }
+    .saved-set-name { flex:1;font-size:.82rem;font-weight:600; }
+    .saved-set-meta { font-size:.7rem;color:#aaa; }
+
+    /* Canvas area */
+    .canvas-area { padding:28px;overflow-y:auto; }
+    .sheets-wrap { display:flex;flex-wrap:wrap;gap:20px;justify-content:flex-start; }
+
+    /* Bingo sheet */
+    .bingo-sheet {
+      background:var(--surface);border-radius:12px;
+      border:2px solid var(--border);overflow:hidden;
+      box-shadow:0 4px 16px rgba(28,28,46,.08);
+      flex-shrink:0;
+    }
+    .bingo-header {
+      padding:10px 14px;background:var(--sage);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .bingo-header span { font-family:var(--ff);font-weight:900;color:#fff;font-size:1.1rem; }
+    .bingo-num { font-size:.75rem;color:rgba(255,255,255,.7); }
+    .bingo-table { border-collapse:collapse; }
+    .bingo-table td {
+      border:1px solid rgba(28,28,46,.12);
+      text-align:center;padding:4px;vertical-align:middle;
+    }
+    .bingo-cell { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px; }
+    .bingo-cell img { border-radius:4px;object-fit:cover; }
+    .bingo-cell-name { font-size:9px;font-weight:600;color:#555;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+
+    /* Empty state */
+    .empty { display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px;gap:14px;color:#bbb;text-align:center; }
+    .empty .icon { font-size:3rem; }
+    .empty h3 { font-family:var(--ff);font-size:1.3rem;color:#ccc; }
+
+    /* Modal */
+    .modal-overlay { position:fixed;inset:0;background:rgba(28,28,46,.5);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;animation:fadeIn .2s ease; }
+    .modal { background:var(--surface);border-radius:22px;padding:34px;max-width:440px;width:100%;box-shadow:0 28px 72px rgba(28,28,46,.2);animation:slideUp .22s ease; }
+    .modal h3 { font-family:var(--ff);font-size:1.4rem;font-weight:800;margin-bottom:6px; }
+    .modal-actions { display:flex;gap:10px;justify-content:flex-end;margin-top:20px; }
+
+    .toast { position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 20px;border-radius:100px;font-size:.82rem;font-weight:600;z-index:9999;animation:tIn .25s ease;pointer-events:none; }
+    @keyframes fadeIn  { from{opacity:0}to{opacity:1} }
+    @keyframes slideUp { from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1} }
+    @keyframes tIn     { from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+    @media print {
+      .nav,.sidebar,.canvas-area > .flex { display:none!important; }
+      .sheets-wrap { gap:0; }
+      .bingo-sheet { page-break-inside:avoid;break-inside:avoid;border:2px solid #333; }
+    }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">Teacher<span>Kit</span></a>
+  <span style="color:#bbb;font-size:.8rem;margin-left:4px">/ Bingo Generator</span>
+  <div class="nav-right" id="nav-right">
+    <div class="avatar" id="nav-avatar" style="display:none"></div>
+  </div>
+</nav>
+
+<div class="main" id="main-area">
+  <div style="display:grid;place-items:center;height:calc(100vh-54px);grid-column:1/-1;padding:40px;opacity:.4">Loading…</div>
+</div>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+const COL   = COLLECTIONS.bingo;
+
+let user = null, sets = [];
+let S = {
+  images: [],   // {name, url (data URL)}
+  rows: 3, cols: 3, numSheets: 5,
+  sheets: [],   // generated
+  setName: '',
+};
+
+onAuthStateChanged(auth, async u => {
+  user = u;
+  if (u) { await loadSets(); showApp(); }
+  else     showLogin();
+});
+
+async function loadSets() {
+  const q = query(collection(db,COL), where('uid','==',user.uid));
+  const snap = await getDocs(q);
+  sets = snap.docs.map(d=>({id:d.id,...d.data()}));
+  sets.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+}
+
+async function saveSet() {
+  if (!S.setName.trim()) { toast('Enter a set name first'); return; }
+  const id = 'bingo_'+Date.now();
+  try {
+    await setDoc(doc(db,COL,id), {
+      uid:user.uid, name:S.setName,
+      rows:S.rows, cols:S.cols,
+      images:S.images,
+      updatedAt:serverTimestamp()
+    });
+    await loadSets(); toast('Set saved ✓'); renderSidebar();
+  } catch(e){ toast('Save failed — check Firebase config'); }
+}
+
+async function deleteSet(id) {
+  await deleteDoc(doc(db,COL,id));
+  await loadSets(); renderSidebar(); toast('Deleted');
+}
+
+function loadSet(set) {
+  S.images = set.images||[];
+  S.rows   = set.rows||3;
+  S.cols   = set.cols||3;
+  S.setName= set.name||'';
+  S.sheets = [];
+  renderSidebar(); renderSheets();
+}
+
+/* ── helpers ── */
+function shuffle(arr) {
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ── render ── */
+function showLogin() {
+  document.getElementById('main-area').innerHTML = `
+<div style="display:grid;place-items:center;height:calc(100vh - 54px);grid-column:1/-1;background:radial-gradient(ellipse 60% 55% at 20% 110%,rgba(74,124,111,.15) 0%,transparent 60%),var(--cream);">
+  <div style="background:#fff;border-radius:24px;padding:48px 40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(28,28,46,.15);">
+    <div style="font-size:3rem;margin-bottom:18px;">🟩</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:10px;">Bingo <span style="color:#e9a825">Generator</span></h2>
+    <p style="color:#777;margin-bottom:26px;font-size:.88rem;line-height:1.6">Upload images, set your grid size, and generate randomised bingo sheets for every student.</p>
+    <button id="btn-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px;border-radius:12px;border:1.5px solid rgba(28,28,46,.1);background:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">
+      <svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <p style="font-size:.72rem;color:#bbb;margin-top:14px;"><a href="index.html" style="color:#aaa">← Back to TeacherKit</a></p>
+  </div>
+</div>`;
+  document.getElementById('btn-login')?.addEventListener('click', ()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('Login failed')));
+}
+
+function showApp() {
+  const u=user; const init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  const av=document.getElementById('nav-avatar');
+  if(av){ av.style.display='flex'; av.innerHTML=u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`; }
+  const nr=document.getElementById('nav-right');
+  if(nr && !nr.querySelector('#btn-print')){
+    nr.insertAdjacentHTML('beforeend',`
+      <button class="btn btn-sm" id="btn-print">🖨 Print</button>
+      <a class="btn btn-sm" href="index.html">← Hub</a>`);
+    nr.querySelector('#btn-print')?.addEventListener('click',()=>window.print());
+  }
+  document.getElementById('main-area').innerHTML=`
+<div class="sidebar" id="sidebar"></div>
+<div class="canvas-area" id="canvas-area">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+    <h2 style="font-family:'Fraunces',serif;font-size:1.6rem;font-weight:900;">Generated Sheets</h2>
+    <div style="display:flex;gap:8px;" class="flex">
+      <button class="btn btn-gold" id="btn-generate">⚡ Generate</button>
+    </div>
+  </div>
+  <div class="sheets-wrap" id="sheets-wrap"></div>
+</div>`;
+  renderSidebar(); renderSheets();
+  document.getElementById('btn-generate')?.addEventListener('click', generate);
+}
+
+function renderSidebar() {
+  const sb = document.getElementById('sidebar'); if(!sb) return;
+  sb.innerHTML=`
+<h3>🟩 Bingo Builder</h3>
+
+<div class="section-card">
+  <h4>Set Name</h4>
+  <div class="field"><input id="set-name" value="${esc(S.setName)}" placeholder="e.g. Animals Bingo" /></div>
+  <div style="display:flex;gap:6px;">
+    <button class="btn btn-sage btn-sm" id="btn-save-set" style="flex:1">💾 Save Set</button>
+  </div>
+</div>
+
+<div class="section-card">
+  <h4>Grid Settings</h4>
+  <div class="field"><label>Sheets to generate</label><input type="number" id="num-sheets" value="${S.numSheets}" min="1" max="30"/></div>
+  <div class="field"><label>Grid size</label>
+    <div class="grid-row">
+      <input type="number" id="grid-rows" value="${S.rows}" min="1" max="8"/>
+      <span>×</span>
+      <input type="number" id="grid-cols" value="${S.cols}" min="1" max="8"/>
+    </div>
+  </div>
+</div>
+
+<div class="section-card">
+  <h4>Images (${S.images.length})</h4>
+  <label class="upload-zone">
+    <input type="file" id="img-upload" multiple accept="image/*"/>
+    <div style="font-size:1.8rem">🖼</div>
+    <p>Click to upload images<br/><span style="font-size:.72rem">Need at least ${S.rows*S.cols} images</span></p>
+  </label>
+  <div class="image-chips" id="img-chips">
+    ${S.images.map((img,i)=>`
+      <div class="img-chip" data-del="${i}" title="${esc(img.name)}">
+        <img src="${img.url}" alt="${esc(img.name)}"/>
+        <div class="img-chip-del">✕</div>
+      </div>`).join('')}
+  </div>
+</div>
+
+<div class="section-card">
+  <h4>Saved Sets (${sets.length})</h4>
+  <div class="saved-set-list">
+    ${sets.length?sets.map(s=>`
+      <div class="saved-set" data-load="${s.id}">
+        <div style="flex:1"><div class="saved-set-name">${esc(s.name)}</div><div class="saved-set-meta">${s.images?.length||0} images · ${s.rows}×${s.cols}</div></div>
+        <button class="btn btn-danger btn-sm" data-del-set="${s.id}">🗑</button>
+      </div>`).join(''):`<p style="color:#bbb;font-size:.78rem;text-align:center;padding:10px">No saved sets yet</p>`}
+  </div>
+</div>`;
+
+  // bind
+  document.getElementById('btn-save-set')?.addEventListener('click', ()=>{
+    S.setName=document.getElementById('set-name')?.value||''; saveSet();
+  });
+  ['num-sheets','grid-rows','grid-cols'].forEach(id=>{
+    document.getElementById(id)?.addEventListener('change', e=>{
+      if(id==='num-sheets') S.numSheets=+e.target.value;
+      if(id==='grid-rows')  S.rows=+e.target.value;
+      if(id==='grid-cols')  S.cols=+e.target.value;
+    });
+  });
+  document.getElementById('img-upload')?.addEventListener('change', e=>{
+    const files=[...e.target.files];
+    let loaded=0;
+    files.forEach(f=>{
+      const r=new FileReader();
+      r.onload=ev=>{ S.images.push({name:f.name.replace(/\.[^/.]+$/,''), url:ev.target.result}); loaded++; if(loaded===files.length) renderSidebar(); };
+      r.readAsDataURL(f);
+    });
+  });
+  document.querySelectorAll('[data-del]').forEach(chip=>{
+    chip.addEventListener('click',()=>{ S.images.splice(+chip.dataset.del,1); renderSidebar(); });
+  });
+  document.querySelectorAll('[data-load]').forEach(row=>{
+    row.addEventListener('click',e=>{ if(e.target.dataset.delSet) return; const s=sets.find(x=>x.id===row.dataset.load); if(s) loadSet(s); });
+  });
+  document.querySelectorAll('[data-del-set]').forEach(btn=>{
+    btn.addEventListener('click',async e=>{ e.stopPropagation(); await deleteSet(btn.dataset.delSet); });
+  });
+}
+
+function generate() {
+  const needed = S.rows*S.cols;
+  if(S.images.length<needed){ toast(`Need at least ${needed} images (have ${S.images.length})`); return; }
+  S.sheets=[];
+  for(let i=0;i<S.numSheets;i++){
+    const cells=shuffle(S.images).slice(0,needed);
+    S.sheets.push(cells);
+  }
+  renderSheets();
+}
+
+function renderSheets() {
+  const wrap=document.getElementById('sheets-wrap'); if(!wrap) return;
+  if(!S.sheets.length){
+    wrap.innerHTML=`<div class="empty"><div class="icon">🟩</div><h3>No sheets yet</h3><p style="font-size:.85rem;max-width:300px">Upload images, set your grid size, and click Generate.</p></div>`;
+    return;
+  }
+  const cellSize = Math.max(60, Math.min(100, Math.floor(420/S.cols)));
+  wrap.innerHTML=S.sheets.map((cells,si)=>`
+<div class="bingo-sheet">
+  <div class="bingo-header">
+    <span>BINGO</span>
+    <span class="bingo-num">Sheet #${si+1}</span>
+  </div>
+  <table class="bingo-table">
+    ${Array.from({length:S.rows},(_,r)=>`
+    <tr>${Array.from({length:S.cols},(_,c)=>{
+      const img=cells[r*S.cols+c];
+      return `<td><div class="bingo-cell" style="width:${cellSize}px;min-height:${cellSize}px;">
+        <img src="${img.url}" style="width:${cellSize-10}px;height:${cellSize-10}px;" alt="${esc(img.name)}"/>
+        <span class="bingo-cell-name">${esc(img.name)}</span>
+      </div></td>`;
+    }).join('')}</tr>`).join('')}
+  </table>
+</div>`).join('');
+}
+
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+</script>
+</body>
+</html>

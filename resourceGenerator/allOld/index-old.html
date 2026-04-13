@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBoard — Teacher's Interactive Quiz Creator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #1a1a2e;
+      --cream: #faf7f2;
+      --warm: #f5ede0;
+      --gold: #e8a923;
+      --gold-dark: #c8891a;
+      --sage: #4a7c6f;
+      --rose: #c8584a;
+      --lavender: #7c6faa;
+      --sky: #4a7fa8;
+      --surface: #ffffff;
+      --border: rgba(26,26,46,0.12);
+      --shadow: 0 4px 24px rgba(26,26,46,0.10);
+      --radius: 16px;
+      --font-display: 'Fraunces', serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── LAYOUT ─────────────────────────────────── */
+    #root { min-height: 100vh; }
+
+    .screen { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ─── NAV ────────────────────────────────────── */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(26,26,46,0.06);
+    }
+    .nav-logo {
+      font-family: var(--font-display);
+      font-size: 1.5rem; font-weight: 900;
+      color: var(--ink);
+      letter-spacing: -0.5px;
+    }
+    .nav-logo span { color: var(--gold); }
+    .nav-actions { display: flex; gap: 12px; align-items: center; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem; color: var(--ink);
+      cursor: pointer; overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ─── BUTTONS ────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 100px; border: none;
+      font-family: var(--font-body); font-weight: 600; font-size: 0.9rem;
+      cursor: pointer; transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: var(--ink); color: #fff;
+    }
+    .btn-primary:hover { background: #2d2d4e; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,26,46,0.25); }
+    .btn-gold {
+      background: var(--gold); color: var(--ink);
+    }
+    .btn-gold:hover { background: var(--gold-dark); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(232,169,35,0.35); }
+    .btn-outline {
+      background: transparent; color: var(--ink);
+      border: 2px solid var(--border);
+    }
+    .btn-outline:hover { border-color: var(--ink); background: var(--warm); }
+    .btn-danger { background: var(--rose); color: #fff; }
+    .btn-danger:hover { background: #b04538; }
+    .btn-sm { padding: 7px 14px; font-size: 0.8rem; }
+    .btn-lg { padding: 14px 32px; font-size: 1rem; }
+    .btn:disabled { opacity: 0.5; pointer-events: none; }
+
+    /* ─── LOGIN SCREEN ───────────────────────────── */
+    .login-screen {
+      min-height: 100vh;
+      display: grid; place-items: center;
+      background: var(--cream);
+      position: relative; overflow: hidden;
+    }
+    .login-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 100%, rgba(232,169,35,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 0%, rgba(74,124,111,0.12) 0%, transparent 60%);
+    }
+    .login-card {
+      position: relative; z-index: 1;
+      background: var(--surface);
+      border-radius: 28px;
+      padding: 56px 48px;
+      max-width: 440px; width: 90%;
+      text-align: center;
+      box-shadow: 0 24px 80px rgba(26,26,46,0.12), 0 0 0 1px rgba(26,26,46,0.06);
+    }
+    .login-icon {
+      width: 72px; height: 72px; border-radius: 20px;
+      background: var(--ink); margin: 0 auto 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+    }
+    .login-card h1 {
+      font-family: var(--font-display);
+      font-size: 2rem; font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .login-card p {
+      color: #666; font-size: 0.95rem; line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .google-btn {
+      width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      padding: 14px 24px; border-radius: 12px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      font-family: var(--font-body); font-weight: 600; font-size: 1rem;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .google-btn:hover { border-color: var(--ink); box-shadow: var(--shadow); transform: translateY(-1px); }
+    .google-icon { width: 22px; height: 22px; }
+    .login-note { font-size: 0.78rem; color: #999; margin-top: 20px; }
+
+    /* ─── DASHBOARD ──────────────────────────────── */
+    .dashboard { flex: 1; padding: 40px 32px; max-width: 1100px; margin: 0 auto; width: 100%; }
+    .dashboard-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 40px; flex-wrap: wrap; gap: 16px;
+    }
+    .dashboard-header h2 {
+      font-family: var(--font-display);
+      font-size: 2.2rem; font-weight: 900;
+    }
+    .dashboard-header h2 span { color: var(--gold); }
+    .dashboard-header p { color: #666; margin-top: 4px; font-size: 0.95rem; }
+
+    .quizzes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .quiz-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .quiz-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+      background: var(--gold);
+    }
+    .quiz-card:hover { box-shadow: var(--shadow); transform: translateY(-3px); }
+    .quiz-card-type {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--gold-dark);
+      background: rgba(232,169,35,0.12);
+      padding: 4px 10px; border-radius: 100px;
+      margin-bottom: 12px;
+    }
+    .quiz-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.3rem; font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .quiz-card-meta { font-size: 0.82rem; color: #888; display: flex; gap: 12px; flex-wrap: wrap; }
+    .quiz-card-actions {
+      display: flex; gap: 8px; margin-top: 16px;
+    }
+    .new-quiz-card {
+      background: transparent;
+      border: 2px dashed rgba(26,26,46,0.2);
+      border-radius: var(--radius);
+      padding: 24px;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; min-height: 160px;
+      transition: all 0.2s;
+      color: #999;
+    }
+    .new-quiz-card:hover { border-color: var(--gold); color: var(--gold-dark); background: rgba(232,169,35,0.04); }
+    .new-quiz-card .icon { font-size: 2rem; }
+    .new-quiz-card p { font-weight: 600; font-size: 0.95rem; }
+
+    /* ─── MODAL ──────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,26,46,0.55);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      background: var(--surface);
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 520px; width: 100%;
+      box-shadow: 0 32px 80px rgba(26,26,46,0.2);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal h3 { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
+    .modal p { color: #666; font-size: 0.9rem; margin-bottom: 24px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* ─── FORM ELEMENTS ──────────────────────────── */
+    .field { margin-bottom: 20px; }
+    .field label {
+      display: block; font-weight: 600; font-size: 0.85rem;
+      margin-bottom: 6px; color: #444;
+    }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: var(--font-body); font-size: 0.95rem;
+      background: var(--cream);
+      color: var(--ink);
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      border-color: var(--gold);
+      background: var(--surface);
+    }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .type-pills {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .type-pill {
+      padding: 10px 18px; border-radius: 100px;
+      border: 2px solid var(--border);
+      font-family: var(--font-body); font-weight: 600; font-size: 0.88rem;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .type-pill.active {
+      border-color: var(--ink); background: var(--ink); color: #fff;
+    }
+    .type-pill:hover:not(.active) { border-color: var(--gold); color: var(--gold-dark); }
+
+    /* ─── EDITOR ─────────────────────────────────── */
+    .editor-screen {
+      flex: 1; display: flex; flex-direction: column;
+      background: var(--cream);
+    }
+    .editor-topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 16px;
+      flex-wrap: wrap;
+    }
+    .editor-title-input {
+      flex: 1; min-width: 200px;
+      font-family: var(--font-display); font-size: 1.2rem; font-weight: 700;
+      border: none; background: transparent; outline: none; color: var(--ink);
+    }
+    .editor-title-input::placeholder { color: #ccc; }
+    .editor-body {
+      flex: 1; display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      gap: 0; overflow: hidden;
+    }
+    @media (max-width: 900px) {
+      .editor-body { grid-template-columns: 1fr; }
+      .editor-sidebar-right { display: none; }
+    }
+
+    /* Question list sidebar */
+    .editor-sidebar-left {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 16px 20px;
+      font-weight: 700; font-size: 0.85rem; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #888;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .questions-list {
+      flex: 1; overflow-y: auto; padding: 12px;
+    }
+    .question-thumb {
+      padding: 12px 14px; border-radius: 10px;
+      cursor: pointer; margin-bottom: 6px;
+      border: 1.5px solid transparent;
+      transition: all 0.15s;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .question-thumb:hover { background: var(--warm); }
+    .question-thumb.active {
+      background: rgba(232,169,35,0.1);
+      border-color: var(--gold);
+    }
+    .question-num {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--ink); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.8rem; flex-shrink: 0;
+    }
+    .question-thumb.active .question-num { background: var(--gold); color: var(--ink); }
+    .question-thumb-text {
+      flex: 1; font-size: 0.83rem; line-height: 1.4;
+      color: #555; word-break: break-word;
+    }
+    .question-thumb-text strong { display: block; color: var(--ink); font-weight: 600; font-size: 0.82rem; margin-bottom: 2px; }
+    .drag-handle { color: #ccc; font-size: 0.8rem; cursor: grab; padding: 2px; }
+
+    /* Editor canvas */
+    .editor-canvas {
+      padding: 32px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 24px;
+    }
+    .canvas-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .canvas-section-header {
+      padding: 14px 20px;
+      background: var(--warm);
+      border-bottom: 1px solid var(--border);
+      font-weight: 700; font-size: 0.82rem;
+      text-transform: uppercase; letter-spacing: 0.08em; color: #666;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .canvas-section-body { padding: 20px; }
+
+    /* Slide preview */
+    .slide-preview {
+      aspect-ratio: 16/9;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+    }
+    .slide-preview-inner {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px;
+      gap: 10px;
+      position: relative;
+    }
+    .slide-question-text {
+      text-align: center; font-weight: 700;
+      font-family: var(--font-display);
+      line-height: 1.3;
+    }
+    .answer-step {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(4px);
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem; font-weight: 600;
+      text-align: center; width: 100%;
+      position: relative;
+    }
+    .answer-step .step-badge {
+      position: absolute; top: -8px; left: 12px;
+      background: var(--gold); color: var(--ink);
+      border-radius: 100px; padding: 2px 8px;
+      font-size: 0.68rem; font-weight: 700;
+    }
+
+    /* Style editor sidebar */
+    .editor-sidebar-right {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .style-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .style-section h4 {
+      font-size: 0.78rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: #888; margin-bottom: 12px;
+    }
+    .color-swatches {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .color-swatch {
+      width: 28px; height: 28px; border-radius: 50%;
+      cursor: pointer; border: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .color-swatch.active { border-color: var(--ink); transform: scale(1.15); }
+    .font-pills {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .font-pill {
+      padding: 6px 12px; border-radius: 8px;
+      border: 1.5px solid var(--border);
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .font-pill.active { border-color: var(--ink); background: var(--ink); color: #fff; }
+    .font-pill:hover:not(.active) { border-color: var(--gold); }
+    .layout-options {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .layout-opt {
+      border: 1.5px solid var(--border); border-radius: 8px;
+      padding: 8px; text-align: center; cursor: pointer;
+      font-size: 0.78rem; font-weight: 600; color: #666;
+      transition: all 0.15s;
+    }
+    .layout-opt.active { border-color: var(--gold); color: var(--gold-dark); background: rgba(232,169,35,0.08); }
+    .layout-opt:hover:not(.active) { border-color: var(--ink); color: var(--ink); }
+    .layout-preview { font-size: 1.4rem; margin-bottom: 4px; }
+    .range-input { width: 100%; accent-color: var(--gold); margin-top: 6px; }
+
+    /* Answers steps builder */
+    .steps-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-item {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--warm); border-radius: 10px; padding: 10px 12px;
+    }
+    .step-num {
+      width: 24px; height: 24px; border-radius: 6px;
+      background: var(--ink); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+    }
+    .step-input {
+      flex: 1; border: none; background: transparent;
+      font-family: var(--font-body); font-size: 0.9rem;
+      color: var(--ink); outline: none;
+    }
+    .step-del {
+      border: none; background: none; cursor: pointer;
+      color: #ccc; font-size: 1rem; padding: 2px 4px;
+      transition: color 0.15s; line-height: 1;
+    }
+    .step-del:hover { color: var(--rose); }
+    .add-step-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1.5px dashed rgba(26,26,46,0.2);
+      background: none; cursor: pointer;
+      font-family: var(--font-body); font-size: 0.85rem;
+      color: #888; width: 100%; margin-top: 6px;
+      transition: all 0.15s;
+    }
+    .add-step-btn:hover { border-color: var(--gold); color: var(--gold-dark); background: rgba(232,169,35,0.04); }
+
+    /* ─── PRESENT MODE ───────────────────────────── */
+    .present-screen {
+      min-height: 100vh;
+      background: var(--ink);
+      display: flex; flex-direction: column;
+      color: #fff;
+    }
+    .present-nav {
+      padding: 16px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .present-title {
+      font-family: var(--font-display); font-size: 1.2rem; font-weight: 700;
+    }
+    .present-body { flex: 1; display: flex; flex-direction: column; }
+
+    /* Number grid view */
+    .number-grid-view {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 32px; gap: 40px;
+    }
+    .number-grid-view h2 {
+      font-family: var(--font-display);
+      font-size: 2rem; font-weight: 900; text-align: center;
+      opacity: 0.9;
+    }
+    .numbers-grid {
+      display: flex; flex-wrap: wrap; gap: 16px;
+      justify-content: center; max-width: 700px;
+    }
+    .number-tile {
+      width: 90px; height: 90px;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 2rem; font-weight: 900;
+      cursor: pointer; transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .number-tile::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(232,169,35,0) 0%, rgba(232,169,35,0) 100%);
+      transition: all 0.2s;
+    }
+    .number-tile:hover:not(.answered)::before {
+      background: linear-gradient(135deg, rgba(232,169,35,0.3) 0%, rgba(232,169,35,0.1) 100%);
+    }
+    .number-tile:hover:not(.answered) {
+      border-color: var(--gold);
+      transform: scale(1.05);
+    }
+    .number-tile.answered {
+      opacity: 0.3; pointer-events: none;
+      text-decoration: line-through;
+    }
+    .grid-controls {
+      display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center;
+    }
+
+    /* Spin the wheel */
+    .wheel-container {
+      display: flex; flex-direction: column; align-items: center; gap: 24px;
+    }
+    .wheel-outer {
+      position: relative; width: 300px; height: 300px;
+    }
+    .wheel-canvas {
+      width: 300px; height: 300px; border-radius: 50%;
+      border: 4px solid var(--gold);
+      box-shadow: 0 0 40px rgba(232,169,35,0.3);
+    }
+    .wheel-pointer {
+      position: absolute; top: -16px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem; line-height: 1; z-index: 2;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    }
+    .wheel-center {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--ink); border: 3px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; cursor: pointer; z-index: 2;
+      transition: all 0.2s;
+    }
+    .wheel-center:hover { background: var(--gold); color: var(--ink); }
+
+    /* Question slide */
+    .question-slide {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 40px;
+      position: relative;
+    }
+    .slide-stage {
+      width: 100%; max-width: 900px;
+      aspect-ratio: 16/9;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.4);
+    }
+    .slide-content {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px; gap: 16px;
+      position: absolute; inset: 0;
+      transition: transform 0.6s cubic-bezier(0.77,0,0.175,1);
+    }
+    .slide-content.question-panel { transform: translateY(0); }
+    .slide-content.answer-panel {
+      transform: translateY(100%);
+    }
+    .slide-content.answer-panel.revealed { transform: translateY(0); }
+    .slide-content.question-panel.revealing { transform: translateY(-100%); }
+
+    .slide-q-number {
+      font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.12em; opacity: 0.5;
+    }
+    .slide-q-text {
+      font-family: var(--font-display); font-weight: 900;
+      text-align: center; line-height: 1.2;
+    }
+    .slide-a-title {
+      font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.12em; opacity: 0.6; margin-bottom: 8px;
+    }
+    .answer-steps-reveal {
+      display: flex; flex-direction: column; gap: 10px; width: 100%;
+      max-width: 600px;
+    }
+    .answer-step-reveal {
+      background: rgba(255,255,255,0.12);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 10px; padding: 12px 20px;
+      font-weight: 600; text-align: center;
+      transition: all 0.4s ease;
+      transform: translateY(0);
+    }
+    .answer-step-reveal.hidden {
+      opacity: 0; transform: translateY(16px);
+    }
+    .slide-controls {
+      position: absolute; bottom: 24px; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+    }
+    .slide-back-area {
+      position: absolute; bottom: 24px; left: 24px;
+    }
+
+    /* ─── EMPTY STATE ────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 60px 20px;
+      grid-column: 1/-1;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+    .empty-state h3 { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 8px; }
+    .empty-state p { color: #888; font-size: 0.9rem; }
+
+    /* ─── TOAST ──────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+      background: var(--ink); color: #fff;
+      padding: 12px 24px; border-radius: 100px;
+      font-size: 0.9rem; font-weight: 600;
+      z-index: 9999;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: toastIn 0.3s ease;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+    /* ─── MISC ───────────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 0.72rem; font-weight: 700;
+      background: var(--warm); color: #666;
+    }
+    .flex { display: flex; }
+    .gap-2 { gap: 8px; }
+    .ml-auto { margin-left: auto; }
+    .text-sm { font-size: 0.85rem; }
+    .text-muted { color: #888; }
+    .mt-4 { margin-top: 16px; }
+    .loading { opacity: 0.6; pointer-events: none; }
+
+    /* ─── SCROLLBAR ──────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(26,26,46,0.15); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ════════════════════════════════════════════════════
+// 🔧 FIREBASE CONFIG — Replace with your own project
+// ════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBZfdXlFxjpGoKqp26S2BHCkiBoL7_xU2Q",
+  authDomain: "teachingresources-8b2d4.firebaseapp.com",
+  projectId: "teachingresources-8b2d4",
+  storageBucket: "teachingresources-8b2d4.firebasestorage.app",
+  messagingSenderId: "5331318811",
+  appId: "1:5331318811:web:a9d8b0f6026d255404a0be",
+  measurementId: "G-F62FK54JYJ"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let state = {
+  user: null,
+  loading: true,
+  screen: 'dashboard', // dashboard | editor | present
+  quizzes: [],
+  currentQuiz: null,
+  activeQuestionIdx: 0,
+  // present mode
+  presentView: 'grid', // grid | wheel | question
+  presentQuestionIdx: null,
+  answeredQuestions: new Set(),
+  revealed: false,
+  revealStep: 0,
+  // modal
+  modal: null, // 'newQuiz' | 'deleteConfirm'
+  pendingDeleteId: null,
+  // toast
+  toast: null,
+};
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  render();
+}
+
+// ════════════════════════════════════════════════════
+// FIREBASE OPS
+// ════════════════════════════════════════════════════
+async function loadQuizzes() {
+  if (!state.user) return;
+  try {
+    const q = query(collection(db, 'quizzes'), where('uid', '==', state.user.uid));
+    const snap = await getDocs(q);
+    const quizzes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    quizzes.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    setState({ quizzes });
+  } catch(e) {
+    showToast('Could not load quizzes — check Firebase config');
+  }
+}
+
+async function saveQuiz(quiz) {
+  try {
+    const ref = doc(db, 'quizzes', quiz.id);
+    await setDoc(ref, { ...quiz, uid: state.user.uid, updatedAt: serverTimestamp() }, { merge: true });
+    showToast('Quiz saved ✓');
+    loadQuizzes();
+  } catch(e) {
+    showToast('Save failed — check Firebase config');
+  }
+}
+
+async function deleteQuiz(id) {
+  try {
+    await deleteDoc(doc(db, 'quizzes', id));
+    showToast('Quiz deleted');
+    setState({ quizzes: state.quizzes.filter(q => q.id !== id), modal: null });
+  } catch(e) {
+    showToast('Delete failed');
+  }
+}
+
+// ════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════
+onAuthStateChanged(auth, user => {
+  setState({ user, loading: false });
+  if (user) loadQuizzes();
+});
+
+async function googleLogin() {
+  try { await signInWithPopup(auth, provider); }
+  catch(e) { showToast('Login failed — check Firebase setup'); }
+}
+
+async function logout() {
+  await signOut(auth);
+  setState({ user: null, screen: 'dashboard', quizzes: [], currentQuiz: null });
+}
+
+// ════════════════════════════════════════════════════
+// QUIZ HELPERS
+// ════════════════════════════════════════════════════
+function newQuizId() { return 'quiz_' + Date.now() + '_' + Math.random().toString(36).slice(2,7); }
+function newQId() { return 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,5); }
+
+function createQuestion() {
+  return {
+    id: newQId(),
+    text: '',
+    steps: [''],
+    style: {
+      bg: '#1a1a2e',
+      accent: '#e8a923',
+      font: 'Fraunces',
+      layout: 'center',
+      questionSize: 36,
+    }
+  };
+}
+
+function createQuiz(name, type) {
+  return {
+    id: newQuizId(),
+    name,
+    type, // 'numbers' | 'wheel'
+    questions: [createQuestion()],
+    createdAt: null,
+  };
+}
+
+// ════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  setState({ toast: msg });
+  toastTimer = setTimeout(() => setState({ toast: null }), 3000);
+}
+
+// ════════════════════════════════════════════════════
+// RENDER ENGINE
+// ════════════════════════════════════════════════════
+const root = document.getElementById('root');
+
+function render() {
+  if (state.loading) {
+    root.innerHTML = `<div style="display:grid;place-items:center;height:100vh;font-family:'DM Sans',sans-serif;font-size:1rem;color:#888;">Loading…</div>`;
+    return;
+  }
+  if (!state.user) { root.innerHTML = renderLogin(); attachLoginEvents(); return; }
+  if (state.screen === 'editor' && state.currentQuiz) { root.innerHTML = renderEditor(); attachEditorEvents(); }
+  else if (state.screen === 'present' && state.currentQuiz) { root.innerHTML = renderPresent(); attachPresentEvents(); }
+  else { root.innerHTML = renderDashboard(); attachDashboardEvents(); }
+  if (state.toast) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = state.toast;
+    document.body.appendChild(t);
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SCREENS
+// ════════════════════════════════════════════════════
+
+// ── LOGIN ────────────────────────────────────────
+function renderLogin() { return `
+<div class="login-screen">
+  <div class="login-bg"></div>
+  <div class="login-card">
+    <div class="login-icon">🎯</div>
+    <h1>Quiz<span style="color:var(--gold)">Board</span></h1>
+    <p>An interactive quiz creator for teachers. Design engaging question slides, reveal answers step-by-step, and make your class unforgettable.</p>
+    <button class="google-btn" id="btn-google-login">
+      <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <p class="login-note">Your quizzes are saved to your account and accessible anywhere.</p>
+  </div>
+</div>`; }
+
+function attachLoginEvents() {
+  document.getElementById('btn-google-login')?.addEventListener('click', googleLogin);
+}
+
+// ── DASHBOARD ────────────────────────────────────
+function renderDashboard() {
+  const u = state.user;
+  const initials = u.displayName?.split(' ').map(n=>n[0]).join('').slice(0,2) || '?';
+  return `
+<div class="screen">
+  <nav class="nav">
+    <div class="nav-logo">Quiz<span>Board</span></div>
+    <div class="nav-actions">
+      <div class="avatar" title="${u.displayName}">
+        ${u.photoURL ? `<img src="${u.photoURL}" alt="${initials}" />` : initials}
+      </div>
+      <button class="btn btn-outline btn-sm" id="btn-logout">Sign out</button>
+    </div>
+  </nav>
+  <div class="dashboard">
+    <div class="dashboard-header">
+      <div>
+        <h2>Good ${getGreeting()}, <span>${u.displayName?.split(' ')[0] || 'Teacher'}</span> 👋</h2>
+        <p>Your quizzes are ready — create a new one or continue editing.</p>
+      </div>
+      <button class="btn btn-gold btn-lg" id="btn-new-quiz">+ New Quiz</button>
+    </div>
+    <div class="quizzes-grid">
+      ${state.quizzes.length === 0 ? renderEmptyState() : state.quizzes.map(renderQuizCard).join('')}
+    </div>
+  </div>
+  ${renderNewQuizModal()}
+  ${renderDeleteModal()}
+</div>`; }
+
+function getGreeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+}
+
+function renderEmptyState() { return `
+<div class="empty-state">
+  <div class="icon">🗂️</div>
+  <h3>No quizzes yet</h3>
+  <p>Create your first quiz to get started!</p>
+</div>`; }
+
+function renderQuizCard(quiz) { return `
+<div class="quiz-card" data-id="${quiz.id}">
+  <div class="quiz-card-type">${quiz.type === 'wheel' ? '🎡 Spin the Wheel' : '🔢 Number Grid'}</div>
+  <h3>${escHtml(quiz.name)}</h3>
+  <div class="quiz-card-meta">
+    <span>📝 ${quiz.questions?.length || 0} questions</span>
+  </div>
+  <div class="quiz-card-actions">
+    <button class="btn btn-primary btn-sm" data-action="edit" data-id="${quiz.id}">✏️ Edit</button>
+    <button class="btn btn-gold btn-sm" data-action="present" data-id="${quiz.id}">▶ Present</button>
+    <button class="btn btn-outline btn-sm" data-action="delete" data-id="${quiz.id}" style="margin-left:auto">🗑</button>
+  </div>
+</div>`; }
+
+function renderNewQuizModal() {
+  if (state.modal !== 'newQuiz') return '';
+  return `
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Create New Quiz</h3>
+    <p>Give your quiz a name and choose how students will pick questions.</p>
+    <div class="field">
+      <label>Quiz Name</label>
+      <input type="text" id="new-quiz-name" placeholder="e.g. Chapter 5 Review" autofocus />
+    </div>
+    <div class="field">
+      <label>Question Selection Style</label>
+      <div class="type-pills" id="type-pills">
+        <div class="type-pill active" data-type="numbers">🔢 Number Grid</div>
+        <div class="type-pill" data-type="wheel">🎡 Spin the Wheel</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modal-cancel">Cancel</button>
+      <button class="btn btn-gold" id="modal-create">Create Quiz →</button>
+    </div>
+  </div>
+</div>`; }
+
+function renderDeleteModal() {
+  if (state.modal !== 'deleteConfirm') return '';
+  return `
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Delete Quiz?</h3>
+    <p>This action cannot be undone. The quiz and all its questions will be permanently removed.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" id="modal-cancel">Cancel</button>
+      <button class="btn btn-danger" id="modal-confirm-delete">Yes, Delete</button>
+    </div>
+  </div>
+</div>`; }
+
+function attachDashboardEvents() {
+  document.getElementById('btn-logout')?.addEventListener('click', logout);
+  document.getElementById('btn-new-quiz')?.addEventListener('click', () => setState({ modal: 'newQuiz' }));
+
+  // Quiz card actions
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const { action, id } = btn.dataset;
+      const quiz = state.quizzes.find(q => q.id === id);
+      if (!quiz) return;
+      if (action === 'edit') { setState({ currentQuiz: JSON.parse(JSON.stringify(quiz)), screen: 'editor', activeQuestionIdx: 0 }); }
+      if (action === 'present') { setState({ currentQuiz: JSON.parse(JSON.stringify(quiz)), screen: 'present', presentView: 'grid', answeredQuestions: new Set(), presentQuestionIdx: null, revealed: false, revealStep: 0 }); }
+      if (action === 'delete') { setState({ modal: 'deleteConfirm', pendingDeleteId: id }); }
+    });
+  });
+
+  // Modal
+  document.getElementById('modal-cancel')?.addEventListener('click', () => setState({ modal: null }));
+  document.getElementById('modal-overlay')?.addEventListener('click', e => { if (e.target.id === 'modal-overlay') setState({ modal: null }); });
+
+  // Type pills
+  document.querySelectorAll('.type-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.type-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // Create
+  document.getElementById('modal-create')?.addEventListener('click', () => {
+    const name = document.getElementById('new-quiz-name')?.value.trim();
+    if (!name) { showToast('Please enter a name'); return; }
+    const type = document.querySelector('.type-pill.active')?.dataset.type || 'numbers';
+    const quiz = createQuiz(name, type);
+    quiz.createdAt = { seconds: Date.now() / 1000 };
+    saveQuiz(quiz);
+    setState({ currentQuiz: quiz, screen: 'editor', activeQuestionIdx: 0, modal: null });
+  });
+
+  // Delete confirm
+  document.getElementById('modal-confirm-delete')?.addEventListener('click', () => {
+    if (state.pendingDeleteId) deleteQuiz(state.pendingDeleteId);
+  });
+}
+
+// ── EDITOR ───────────────────────────────────────
+function renderEditor() {
+  const q = state.currentQuiz;
+  const aq = q.questions[state.activeQuestionIdx];
+  if (!aq) return '';
+  const style = aq.style;
+
+  return `
+<div class="screen editor-screen">
+  <div class="editor-topbar">
+    <button class="btn btn-outline btn-sm" id="btn-back-dash">← Dashboard</button>
+    <input class="editor-title-input" id="quiz-title-input" value="${escHtml(q.name)}" placeholder="Quiz name…" />
+    <div style="display:flex;gap:8px;margin-left:auto">
+      <button class="btn btn-outline btn-sm" id="btn-add-question">+ Question</button>
+      <button class="btn btn-gold btn-sm" id="btn-save-quiz">💾 Save</button>
+      <button class="btn btn-primary btn-sm" id="btn-present-quiz">▶ Present</button>
+    </div>
+  </div>
+  <div class="editor-body">
+    <!-- Sidebar: question list -->
+    <div class="editor-sidebar-left">
+      <div class="sidebar-header">
+        Questions
+        <span class="chip">${q.questions.length}</span>
+      </div>
+      <div class="questions-list">
+        ${q.questions.map((qq, i) => `
+          <div class="question-thumb ${i === state.activeQuestionIdx ? 'active' : ''}" data-qidx="${i}">
+            <div class="question-num">${i+1}</div>
+            <div class="question-thumb-text">
+              <strong>${qq.text ? escHtml(qq.text).slice(0,60) + (qq.text.length>60?'…':'') : '(empty)'}</strong>
+              ${qq.steps.filter(Boolean).length} answer step${qq.steps.filter(Boolean).length !== 1 ? 's' : ''}
+            </div>
+            ${q.questions.length > 1 ? `<button class="step-del" data-del-q="${i}" title="Remove">×</button>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Main canvas -->
+    <div class="editor-canvas">
+      <!-- Question text -->
+      <div class="canvas-card">
+        <div class="canvas-section-header">
+          Question ${state.activeQuestionIdx + 1}
+          <span class="chip">of ${q.questions.length}</span>
+        </div>
+        <div class="canvas-section-body">
+          <div class="field" style="margin:0">
+            <label>Question Text</label>
+            <textarea id="q-text" placeholder="Enter your question here…" rows="3">${escHtml(aq.text)}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Answer steps -->
+      <div class="canvas-card">
+        <div class="canvas-section-header">
+          Answer Steps
+          <span class="chip" style="background:rgba(232,169,35,0.15);color:var(--gold-dark)">Revealed one by one</span>
+        </div>
+        <div class="canvas-section-body">
+          <p class="text-sm text-muted" style="margin-bottom:14px">Add answer steps — during presentation you'll reveal them one at a time.</p>
+          <div class="steps-list" id="steps-list">
+            ${aq.steps.map((s, si) => `
+              <div class="step-item" data-si="${si}">
+                <div class="step-num">${si+1}</div>
+                <input class="step-input" data-step="${si}" value="${escHtml(s)}" placeholder="Answer step ${si+1}…" />
+                ${aq.steps.length > 1 ? `<button class="step-del" data-del-step="${si}">×</button>` : ''}
+              </div>`).join('')}
+          </div>
+          <button class="add-step-btn" id="add-step-btn">+ Add Step</button>
+        </div>
+      </div>
+
+      <!-- Live slide preview -->
+      <div class="canvas-card">
+        <div class="canvas-section-header">Slide Preview</div>
+        <div class="canvas-section-body">
+          ${renderSlidePreview(aq)}
+        </div>
+      </div>
+    </div>
+
+    <!-- Style sidebar -->
+    <div class="editor-sidebar-right">
+      <div class="style-section">
+        <h4>Background</h4>
+        <div class="color-swatches">
+          ${['#1a1a2e','#4a7c6f','#c8584a','#4a7fa8','#7c6faa','#2d4a2d','#4a2d1a'].map(c => `
+            <div class="color-swatch ${style.bg === c ? 'active' : ''}" style="background:${c}" data-bg="${c}" title="${c}"></div>
+          `).join('')}
+          <label style="cursor:pointer" title="Custom color">
+            <div class="color-swatch" style="background: conic-gradient(red,yellow,lime,cyan,blue,magenta,red); border:2px solid #ddd"></div>
+            <input type="color" id="custom-bg" value="${style.bg}" style="display:none" />
+          </label>
+        </div>
+      </div>
+      <div class="style-section">
+        <h4>Accent Color</h4>
+        <div class="color-swatches">
+          ${['#e8a923','#ffffff','#4ae8b4','#e87c4a','#b4e84a','#e84ab4','#4ab4e8'].map(c => `
+            <div class="color-swatch ${style.accent === c ? 'active' : ''}" style="background:${c};border-color:${style.accent===c?'#333':'transparent'}" data-accent="${c}"></div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="style-section">
+        <h4>Font</h4>
+        <div class="font-pills">
+          ${[['Fraunces','Serif'],['DM Sans','Sans'],['Georgia','Classic'],['Courier New','Mono']].map(([f,l]) => `
+            <div class="font-pill ${style.font === f ? 'active' : ''}" data-font="${f}" style="font-family:'${f}'">${l}</div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="style-section">
+        <h4>Layout</h4>
+        <div class="layout-options">
+          ${[['center','⬛','Centered'],['left','▤','Left'],['top','▀','Top'],['bottom','▄','Bottom']].map(([l,ic,lb]) => `
+            <div class="layout-opt ${style.layout===l?'active':''}" data-layout="${l}">
+              <div class="layout-preview">${ic}</div>${lb}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="style-section">
+        <h4>Question Size — ${style.questionSize || 36}px</h4>
+        <input type="range" class="range-input" id="q-size-range" min="20" max="64" value="${style.questionSize || 36}" />
+      </div>
+    </div>
+  </div>
+</div>`; }
+
+function renderSlidePreview(q) {
+  const s = q.style;
+  const textColor = isLight(s.bg) ? '#1a1a2e' : '#ffffff';
+  const justify = s.layout === 'top' ? 'flex-start' : s.layout === 'bottom' ? 'flex-end' : 'center';
+  const align = s.layout === 'left' ? 'flex-start' : 'center';
+  return `
+<div class="slide-preview" style="background:${s.bg}">
+  <div class="slide-preview-inner" style="justify-content:${justify};align-items:${align}">
+    <div class="slide-question-text" style="font-family:'${s.font}',serif;font-size:${Math.max(10,Math.round((s.questionSize||36)*0.35))}px;color:${textColor}">
+      ${escHtml(q.text) || '<span style="opacity:0.3">Your question here…</span>'}
+    </div>
+    ${q.steps.filter(Boolean).map((step, i) => `
+      <div class="answer-step" style="background:rgba(255,255,255,0.1);border-color:${s.accent};color:${textColor};font-size:9px">
+        <span class="step-badge" style="background:${s.accent};color:${isLight(s.accent)?'#1a1a2e':'#fff'}">${i+1}</span>
+        ${escHtml(step)}
+      </div>`).join('')}
+  </div>
+</div>`; }
+
+function attachEditorEvents() {
+  const q = state.currentQuiz;
+
+  document.getElementById('btn-back-dash')?.addEventListener('click', () => setState({ screen: 'dashboard' }));
+
+  document.getElementById('quiz-title-input')?.addEventListener('input', e => {
+    q.name = e.target.value;
+  });
+
+  // Question select
+  document.querySelectorAll('.question-thumb[data-qidx]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.delQ !== undefined) return;
+      setState({ activeQuestionIdx: +el.dataset.qidx });
+    });
+  });
+
+  // Delete question
+  document.querySelectorAll('[data-del-q]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = +btn.dataset.delQ;
+      q.questions.splice(idx, 1);
+      setState({ activeQuestionIdx: Math.min(state.activeQuestionIdx, q.questions.length-1) });
+    });
+  });
+
+  // Add question
+  document.getElementById('btn-add-question')?.addEventListener('click', () => {
+    q.questions.push(createQuestion());
+    setState({ activeQuestionIdx: q.questions.length - 1 });
+  });
+
+  // Question text
+  document.getElementById('q-text')?.addEventListener('input', e => {
+    q.questions[state.activeQuestionIdx].text = e.target.value;
+    updatePreview();
+  });
+
+  // Step inputs
+  document.querySelectorAll('.step-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const si = +inp.dataset.step;
+      q.questions[state.activeQuestionIdx].steps[si] = e.target.value;
+      updatePreview();
+    });
+  });
+
+  // Delete step
+  document.querySelectorAll('[data-del-step]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const si = +btn.dataset.delStep;
+      q.questions[state.activeQuestionIdx].steps.splice(si, 1);
+      setState({});
+    });
+  });
+
+  // Add step
+  document.getElementById('add-step-btn')?.addEventListener('click', () => {
+    q.questions[state.activeQuestionIdx].steps.push('');
+    setState({});
+    // Focus last
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.step-input');
+      inputs[inputs.length-1]?.focus();
+    }, 50);
+  });
+
+  // Style: bg color swatches
+  document.querySelectorAll('[data-bg]').forEach(sw => {
+    sw.addEventListener('click', () => {
+      q.questions[state.activeQuestionIdx].style.bg = sw.dataset.bg;
+      setState({});
+    });
+  });
+  document.getElementById('custom-bg')?.addEventListener('input', e => {
+    q.questions[state.activeQuestionIdx].style.bg = e.target.value;
+    updatePreview();
+  });
+
+  // Accent
+  document.querySelectorAll('[data-accent]').forEach(sw => {
+    sw.addEventListener('click', () => {
+      q.questions[state.activeQuestionIdx].style.accent = sw.dataset.accent;
+      setState({});
+    });
+  });
+
+  // Font
+  document.querySelectorAll('[data-font]').forEach(pill => {
+    pill.addEventListener('click', () => {
+      q.questions[state.activeQuestionIdx].style.font = pill.dataset.font;
+      setState({});
+    });
+  });
+
+  // Layout
+  document.querySelectorAll('[data-layout]').forEach(opt => {
+    opt.addEventListener('click', () => {
+      q.questions[state.activeQuestionIdx].style.layout = opt.dataset.layout;
+      setState({});
+    });
+  });
+
+  // Size
+  document.getElementById('q-size-range')?.addEventListener('input', e => {
+    q.questions[state.activeQuestionIdx].style.questionSize = +e.target.value;
+    updatePreview();
+  });
+
+  // Save / Present
+  document.getElementById('btn-save-quiz')?.addEventListener('click', () => saveQuiz(q));
+  document.getElementById('btn-present-quiz')?.addEventListener('click', () => {
+    saveQuiz(q);
+    setState({ screen: 'present', presentView: 'grid', answeredQuestions: new Set(), presentQuestionIdx: null, revealed: false, revealStep: 0 });
+  });
+}
+
+function updatePreview() {
+  const preview = document.querySelector('.slide-preview');
+  if (!preview) return;
+  const aq = state.currentQuiz.questions[state.activeQuestionIdx];
+  preview.outerHTML = renderSlidePreview(aq);
+}
+
+// ── PRESENT ──────────────────────────────────────
+let wheelSpinning = false;
+let wheelRotation = 0;
+let wheelAnimId = null;
+
+function renderPresent() {
+  const q = state.currentQuiz;
+  if (state.presentView === 'grid') return renderPresentGrid(q);
+  if (state.presentView === 'wheel') return renderPresentWheel(q);
+  if (state.presentView === 'question') return renderPresentQuestion(q);
+  return '';
+}
+
+function renderPresentGrid(q) { return `
+<div class="present-screen">
+  <div class="present-nav">
+    <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.2)" id="btn-back-from-present">← Back to Editor</button>
+    <div class="present-title">${escHtml(q.name)}</div>
+    ${q.type === 'wheel' ? `<button class="btn btn-gold btn-sm" id="btn-switch-wheel">🎡 Spin the Wheel</button>` : '<div></div>'}
+  </div>
+  <div class="number-grid-view">
+    <h2>Pick a number to begin</h2>
+    <div class="numbers-grid">
+      ${q.questions.map((_, i) => `
+        <div class="number-tile ${state.answeredQuestions.has(i) ? 'answered' : ''}" data-qnum="${i}">
+          ${i+1}
+        </div>`).join('')}
+    </div>
+    <div class="grid-controls">
+      <span style="opacity:0.5;font-size:0.85rem">${state.answeredQuestions.size} of ${q.questions.length} answered</span>
+      ${state.answeredQuestions.size > 0 ? `<button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.2)" id="btn-reset">↩ Reset</button>` : ''}
+    </div>
+  </div>
+</div>`; }
+
+function renderPresentWheel(q) {
+  const available = q.questions.map((_, i) => i).filter(i => !state.answeredQuestions.has(i));
+  return `
+<div class="present-screen">
+  <div class="present-nav">
+    <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.2)" id="btn-back-grid">← Back to Grid</button>
+    <div class="present-title">🎡 Spin the Wheel</div>
+    <div></div>
+  </div>
+  <div class="number-grid-view">
+    <h2>Spin to pick a question!</h2>
+    <div class="wheel-container">
+      <div class="wheel-outer">
+        <div class="wheel-pointer">▼</div>
+        <canvas class="wheel-canvas" id="wheel-canvas" width="300" height="300"></canvas>
+        <div class="wheel-center" id="wheel-spin-btn">▶</div>
+      </div>
+      <p style="opacity:0.5;font-size:0.9rem">${available.length} questions remaining</p>
+    </div>
+  </div>
+</div>`; }
+
+function renderPresentQuestion(q) {
+  const qi = state.presentQuestionIdx;
+  const question = q.questions[qi];
+  if (!question) return '';
+  const s = question.style;
+  const textColor = isLight(s.bg) ? '#1a1a2e' : '#ffffff';
+  const justify = s.layout === 'top' ? 'flex-start' : s.layout === 'bottom' ? 'flex-end' : 'center';
+  const align = s.layout === 'left' ? 'flex-start' : 'center';
+  const steps = question.steps.filter(Boolean);
+  const isRevealed = state.revealed;
+
+  return `
+<div class="present-screen">
+  <div class="present-nav">
+    <div style="width:120px"></div>
+    <div class="present-title">${escHtml(q.name)} — Q${qi+1}</div>
+    <div style="width:120px"></div>
+  </div>
+  <div class="question-slide">
+    <div class="slide-stage">
+      <!-- Question panel -->
+      <div class="slide-content question-panel ${isRevealed ? 'revealing' : ''}"
+           style="background:${s.bg};justify-content:${justify};align-items:${align}">
+        <div class="slide-q-number" style="color:${s.accent}">Question ${qi+1}</div>
+        <div class="slide-q-text" style="font-family:'${s.font}',serif;font-size:${s.questionSize||36}px;color:${textColor}">
+          ${escHtml(question.text) || '<em style="opacity:0.3">No question text</em>'}
+        </div>
+      </div>
+      <!-- Answer panel -->
+      <div class="slide-content answer-panel ${isRevealed ? 'revealed' : ''}"
+           style="background:${s.bg};justify-content:${justify};align-items:${align}">
+        <div class="slide-a-title" style="color:${s.accent}">Answer</div>
+        <div class="answer-steps-reveal">
+          ${steps.map((step, si) => `
+            <div class="answer-step-reveal ${si >= state.revealStep ? 'hidden' : ''}"
+                 style="border-color:${s.accent};color:${textColor}">
+              <span style="font-size:0.7rem;font-weight:700;color:${s.accent};display:block;margin-bottom:4px">Step ${si+1}</span>
+              ${escHtml(step)}
+            </div>`).join('')}
+        </div>
+        ${state.revealStep < steps.length ? `
+          <button class="btn btn-sm" id="btn-reveal-step"
+                  style="margin-top:16px;background:${s.accent};color:${isLight(s.accent)?'#1a1a2e':'#fff'}">
+            Show Next Step (${state.revealStep+1}/${steps.length})
+          </button>` : ''}
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div style="display:flex;gap:16px;margin-top:24px;align-items:center;flex-wrap:wrap;justify-content:center">
+      ${!isRevealed ? `
+        <button class="btn btn-gold btn-lg" id="btn-reveal-answer">🎉 Reveal Answer</button>
+      ` : `
+        <button class="btn btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.2)" id="btn-back-to-grid">
+          ← Back to Questions
+        </button>
+      `}
+    </div>
+  </div>
+</div>`; }
+
+function attachPresentEvents() {
+  document.getElementById('btn-back-from-present')?.addEventListener('click', () => setState({ screen: 'editor' }));
+  document.getElementById('btn-reset')?.addEventListener('click', () => setState({ answeredQuestions: new Set() }));
+  document.getElementById('btn-switch-wheel')?.addEventListener('click', () => setState({ presentView: 'wheel' }));
+  document.getElementById('btn-back-grid')?.addEventListener('click', () => setState({ presentView: 'grid' }));
+
+  // Number tiles
+  document.querySelectorAll('.number-tile:not(.answered)').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const idx = +tile.dataset.qnum;
+      setState({ presentView: 'question', presentQuestionIdx: idx, revealed: false, revealStep: 0 });
+    });
+  });
+
+  // Reveal answer
+  document.getElementById('btn-reveal-answer')?.addEventListener('click', () => {
+    setState({ revealed: true, revealStep: 0 });
+  });
+
+  // Reveal step by step
+  document.getElementById('btn-reveal-step')?.addEventListener('click', () => {
+    setState({ revealStep: state.revealStep + 1 });
+  });
+
+  // Back to grid
+  document.getElementById('btn-back-to-grid')?.addEventListener('click', () => {
+    const newAnswered = new Set(state.answeredQuestions);
+    newAnswered.add(state.presentQuestionIdx);
+    setState({ presentView: 'grid', answeredQuestions: newAnswered, presentQuestionIdx: null, revealed: false, revealStep: 0 });
+  });
+
+  // Wheel
+  if (state.presentView === 'wheel') {
+    initWheel();
+    document.getElementById('wheel-spin-btn')?.addEventListener('click', spinWheel);
+  }
+}
+
+function initWheel() {
+  const canvas = document.getElementById('wheel-canvas');
+  if (!canvas) return;
+  const available = state.currentQuiz.questions.map((_,i)=>i).filter(i=>!state.answeredQuestions.has(i));
+  drawWheel(canvas, available, wheelRotation);
+}
+
+function drawWheel(canvas, segments, rotation) {
+  const ctx = canvas.getContext('2d');
+  const cx = 150, cy = 150, r = 145;
+  const n = segments.length;
+  if (!n) { ctx.clearRect(0,0,300,300); return; }
+  const arc = (2 * Math.PI) / n;
+  const colors = ['#e8a923','#4a7c6f','#c8584a','#4a7fa8','#7c6faa','#4a7fa8','#2d4a2d'];
+  ctx.clearRect(0,0,300,300);
+  segments.forEach((qi, i) => {
+    const start = rotation + i * arc - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + arc);
+    ctx.closePath();
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 2; ctx.stroke();
+    // Label
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(start + arc/2);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px Fraunces, serif';
+    ctx.fillText(qi+1, r - 16, 8);
+    ctx.restore();
+  });
+}
+
+function spinWheel() {
+  if (wheelSpinning) return;
+  const canvas = document.getElementById('wheel-canvas');
+  if (!canvas) return;
+  const available = state.currentQuiz.questions.map((_,i)=>i).filter(i=>!state.answeredQuestions.has(i));
+  if (!available.length) { showToast('All questions answered!'); return; }
+  wheelSpinning = true;
+  const target = available[Math.floor(Math.random() * available.length)];
+  const n = available.length;
+  const arc = (2 * Math.PI) / n;
+  const targetIdx = available.indexOf(target);
+  // Spin to land pointer (top = -PI/2) on this segment
+  const spins = 5 + Math.random() * 3;
+  const targetAngle = -targetIdx * arc - arc/2;
+  const totalRotation = spins * 2 * Math.PI + targetAngle - wheelRotation;
+  const start = performance.now();
+  const duration = 3500;
+  const startRot = wheelRotation;
+
+  function animate(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1-progress, 4);
+    wheelRotation = startRot + totalRotation * ease;
+    drawWheel(canvas, available, wheelRotation);
+    if (progress < 1) {
+      wheelAnimId = requestAnimationFrame(animate);
+    } else {
+      wheelSpinning = false;
+      wheelRotation = startRot + totalRotation;
+      setTimeout(() => {
+        setState({ presentView: 'question', presentQuestionIdx: target, revealed: false, revealStep: 0 });
+      }, 600);
+    }
+  }
+  wheelAnimId = requestAnimationFrame(animate);
+}
+
+// ════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function isLight(hex) {
+  const c = hex.replace('#','');
+  if (c.length !== 6) return false;
+  const r = parseInt(c.slice(0,2),16), g = parseInt(c.slice(2,4),16), b = parseInt(c.slice(4,6),16);
+  return (r*299 + g*587 + b*114) / 1000 > 128;
+}
+
+// ════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>

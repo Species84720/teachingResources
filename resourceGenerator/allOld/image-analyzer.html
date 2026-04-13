@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Image Analyzer — TeacherKit</title>
+  <link href="shared.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html" class="logo">Teacher<span>Kit</span></a>
+    <div class="nav-right">
+      <button class="btn btn-gold" id="btn-save">Save Hotspots to Firebase</button>
+    </div>
+  </div>
+
+  <div style="padding: 20px; text-align: center;">
+    <p>Click on the image to place a hotspot. (In a full implementation, you would load an image here)</p>
+    <div id="hotspot-area" style="width: 600px; height: 400px; background: #ddd; margin: 0 auto; position: relative; cursor: crosshair;"></div>
+  </div>
+
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const area = document.getElementById('hotspot-area');
+    let hotspots = [];
+
+    area.addEventListener('click', (e) => {
+        const rect = area.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        hotspots.push({ x, y });
+        
+        const dot = document.createElement('div');
+        dot.style.cssText = `position:absolute; width:20px; height:20px; background:var(--rose); border-radius:50%; left:${x-10}px; top:${y-10}px; border:2px solid white;`;
+        area.appendChild(dot);
+    });
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+        if(!auth.currentUser) return alert("Please login on dashboard!");
+        await addDoc(collection(db, "imageAnalyzer"), { uid: auth.currentUser.uid, hotspots });
+        alert("Hotspots saved to Firebase!");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Snakes & Ladders — TeacherKit</title>
+  <link href="shared.css" rel="stylesheet" />
+  <style>
+    .board {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      width: 600px;
+      height: 600px;
+      margin: 20px auto;
+      border: 2px solid var(--ink);
+    }
+    .cell {
+      border: 1px solid rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    .cell:nth-child(even) { background-color: var(--warm); }
+    .cell:nth-child(odd) { background-color: var(--cream); }
+    .player-token {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--rose); color: white;
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html" class="logo">Teacher<span>Kit</span></a>
+    <div class="nav-right">
+      <button class="btn btn-primary" id="roll-dice">Roll Dice</button>
+    </div>
+  </div>
+
+  <div style="text-align:center; padding: 10px; font-size: 1.5rem;" id="dice-result">Roll the dice to start!</div>
+  
+  <div class="board" id="board"></div>
+
+  <script>
+    const board = document.getElementById('board');
+    // Generate 100 blocks (10x10) bottom-up snake pattern
+    let cells = [];
+    for (let row = 9; row >= 0; row--) {
+      let rowCells = [];
+      for (let col = 0; col < 10; col++) {
+        rowCells.push(row * 10 + col + 1);
+      }
+      if (row % 2 !== 0) rowCells.reverse(); // Snake pattern
+      cells.push(...rowCells);
+    }
+
+    cells.forEach(num => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.innerText = num;
+      cell.id = `cell-${num}`;
+      board.appendChild(cell);
+    });
+
+    document.getElementById('roll-dice').addEventListener('click', () => {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      document.getElementById('dice-result').innerText = `You rolled a ${roll}!`;
+      // Here you would add the logic to move the player token to `cell-${currentPos + roll}`
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Drag & Sort — TeacherKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;
+      --gold:#e9a825;--gold-dk:#c8891a;
+      --rose:#c8584a;--sky:#3d7eb5;--sage:#4a7c6f;
+      --surface:#fff;--border:rgba(28,28,46,.10);
+      --ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;
+    }
+    body{font-family:var(--fb);background:var(--cream);color:var(--ink);min-height:100vh;}
+
+    /* Nav */
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:13px 24px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06);}
+    .logo{font-family:var(--ff);font-weight:900;font-size:1.25rem;text-decoration:none;color:var(--ink);}
+    .logo span{color:var(--gold);}
+    .nav-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .17s;background:transparent;color:var(--ink);}
+    .btn:hover{border-color:var(--ink);background:var(--warm);}
+    .btn-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+    .btn-gold:hover{background:var(--gold-dk);}
+    .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+    .btn-sky{background:var(--sky);color:#fff;border-color:var(--sky);}
+    .btn-danger{background:var(--rose);color:#fff;border-color:var(--rose);}
+    .btn-sm{padding:5px 12px;font-size:.76rem;}
+    .btn:disabled{opacity:.4;pointer-events:none;}
+
+    /* Two-panel layout */
+    .layout{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 54px);}
+
+    /* Editor panel */
+    .editor-panel{background:var(--surface);border-right:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+    .ep-title{font-family:var(--ff);font-size:1.1rem;font-weight:800;}
+
+    .section-box{background:var(--cream);border-radius:12px;padding:14px;border:1px solid var(--border);}
+    .section-box h4{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#999;margin-bottom:10px;}
+
+    .field{margin-bottom:10px;}
+    .field label{display:block;font-weight:600;font-size:.77rem;margin-bottom:4px;color:#555;}
+    .field input,.field textarea{width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:.85rem;background:var(--surface);color:var(--ink);outline:none;}
+    .field input:focus,.field textarea:focus{border-color:var(--gold);}
+    .field textarea{resize:none;min-height:48px;}
+
+    /* Category chips */
+    .cat-list{display:flex;flex-direction:column;gap:6px;}
+    .cat-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--surface);border:1.5px solid var(--border);}
+    .cat-color{width:16px;height:16px;border-radius:4px;flex-shrink:0;}
+    .cat-name{flex:1;border:none;background:transparent;font-family:var(--fb);font-weight:600;font-size:.82rem;color:var(--ink);outline:none;}
+    .cat-x{border:none;background:none;cursor:pointer;color:#ccc;font-size:.88rem;}
+    .cat-x:hover{color:var(--rose);}
+
+    /* Statement list */
+    .stmt-list{display:flex;flex-direction:column;gap:8px;}
+    .stmt-row{background:var(--surface);border-radius:8px;padding:8px 10px;border:1.5px solid var(--border);}
+    .stmt-top{display:flex;align-items:flex-start;gap:8px;}
+    .stmt-text{flex:1;border:none;background:transparent;font-family:var(--fb);font-size:.82rem;color:var(--ink);resize:none;outline:none;min-height:38px;}
+    .stmt-x{border:none;background:none;cursor:pointer;color:#ccc;font-size:.88rem;padding:2px 4px;}
+    .stmt-x:hover{color:var(--rose);}
+    .stmt-cat-sel{width:100%;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:.78rem;background:var(--cream);color:var(--ink);outline:none;margin-top:5px;}
+
+    /* Saved list */
+    .saved-list{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;}
+    .saved-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--warm);cursor:pointer;border:1.5px solid transparent;transition:all .15s;}
+    .saved-row:hover{border-color:var(--gold);background:rgba(233,168,37,.08);}
+
+    /* Play area */
+    .play-area{padding:28px;overflow-y:auto;}
+    .play-header{margin-bottom:24px;}
+    .play-header h2{font-family:var(--ff);font-size:1.8rem;font-weight:900;}
+    .play-header p{color:#777;font-size:.88rem;margin-top:4px;}
+
+    .play-body{display:flex;flex-direction:column;gap:28px;}
+
+    /* Cards pool */
+    .cards-pool{display:flex;flex-wrap:wrap;gap:10px;min-height:60px;}
+    .stmt-card{
+      padding:12px 16px;border-radius:10px;
+      background:var(--gold);color:var(--ink);
+      font-weight:600;font-size:.88rem;line-height:1.4;
+      cursor:grab;user-select:none;
+      max-width:300px;border:2px solid transparent;
+      transition:all .2s;box-shadow:0 2px 8px rgba(28,28,46,.1);
+    }
+    .stmt-card:active{cursor:grabbing;}
+    .stmt-card.dragging{opacity:.45;transform:scale(0.97);}
+    .stmt-card.correct-placed{background:rgba(74,124,111,.15);border-color:var(--sage);color:var(--ink);cursor:default;}
+    .stmt-card.wrong-placed{background:rgba(200,88,74,.15);border-color:var(--rose);animation:shake .4s ease;}
+
+    /* Drop zones */
+    .drop-zones{display:grid;gap:16px;}
+    .drop-zone{
+      background:var(--surface);border-radius:14px;
+      border:2px dashed rgba(28,28,46,.15);
+      padding:16px;min-height:120px;
+      transition:all .2s;
+    }
+    .drop-zone.drag-over{border-color:var(--sky);background:rgba(61,126,181,.06);}
+    .drop-zone.correct-zone{border-color:var(--sage);background:rgba(74,124,111,.05);}
+    .drop-zone-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+    .drop-zone-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+    .drop-zone-name{font-family:var(--ff);font-weight:700;font-size:1rem;}
+    .drop-zone-cards{display:flex;flex-wrap:wrap;gap:8px;min-height:40px;}
+
+    /* Score bar */
+    .score-bar{background:var(--surface);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:16px;border:1px solid var(--border);}
+    .score-num{font-family:var(--ff);font-size:1.5rem;font-weight:900;color:var(--gold);}
+    .score-label{font-size:.82rem;color:#777;}
+
+    /* Login */
+    .login-wrap{display:grid;place-items:center;height:calc(100vh - 54px);grid-column:1/-1;}
+
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 20px;border-radius:100px;font-size:.82rem;font-weight:600;z-index:9999;animation:tIn .25s ease;pointer-events:none;}
+    @keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+    .avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;overflow:hidden;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">Teacher<span>Kit</span></a>
+  <span style="color:#bbb;font-size:.8rem;margin-left:4px">/ Drag & Sort</span>
+  <div class="nav-right" id="nav-right"></div>
+</nav>
+<div class="layout" id="layout">
+  <div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 54px);opacity:.4">Loading…</div>
+</div>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+const fbApp=initializeApp(firebaseConfig), auth=getAuth(fbApp), db=getFirestore(fbApp);
+const COL=COLLECTIONS.dragSort;
+
+let user=null, saved=[];
+const CAT_COLORS=['#e9a825','#4a7c6f','#c8584a','#3d7eb5','#7563b8','#c87c4a'];
+
+/* Default activity */
+let A = {
+  id: null, name:'',
+  categories: [
+    {id:'c1', name:'Cyberbullying', color:'#3d7eb5'},
+    {id:'c2', name:'Bullying',      color:'#c8584a'},
+  ],
+  statements: [
+    {id:'s1', text:'A boy hit me very hard in the playground',               cat:'c2'},
+    {id:'s2', text:'A child is texting me that he is going to hit me',       cat:'c1'},
+    {id:'s3', text:'A boy is calling me names during school hours',          cat:'c2'},
+    {id:'s4', text:'A child is all the time texting me and calling me names',cat:'c1'},
+    {id:'s5', text:'Someone took a picture of me and is making fun online',  cat:'c1'},
+  ]
+};
+
+/* Play state */
+let placed = {}; // statementId → catId
+let checked = {};
+let score=0, maxScore=0;
+
+onAuthStateChanged(auth, async u=>{
+  user=u;
+  if(u){ await loadSaved(); buildUI(); }
+  else  buildLoginUI();
+});
+
+async function loadSaved(){
+  const q=query(collection(db,COL),where('uid','==',user.uid));
+  const snap=await getDocs(q);
+  saved=snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function saveActivity(){
+  if(!A.name.trim()){toast('Enter an activity name');return;}
+  const id=A.id||(A.id='ds_'+Date.now());
+  try{
+    await setDoc(doc(db,COL,id),{uid:user.uid,...A,updatedAt:serverTimestamp()},{merge:true});
+    await loadSaved(); toast('Saved ✓'); renderEditor();
+  }catch{toast('Save failed — check Firebase');}
+}
+async function deleteActivity(id){
+  await deleteDoc(doc(db,COL,id));
+  if(A.id===id){A.id=null;}
+  await loadSaved(); renderEditor(); toast('Deleted');
+}
+function loadActivity(s){
+  A=JSON.parse(JSON.stringify(s));
+  placed={}; checked={}; score=0;
+  renderEditor(); renderPlay();
+}
+
+const uid=()=>Math.random().toString(36).slice(2,8);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ── UI ── */
+function buildLoginUI(){
+  document.getElementById('layout').innerHTML=`
+<div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 54px);background:var(--cream);">
+  <div style="background:#fff;border-radius:24px;padding:48px 40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(28,28,46,.15);">
+    <div style="font-size:3rem;margin-bottom:18px;">💬</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:10px;">Drag & <span style="color:#e9a825">Sort</span></h2>
+    <p style="color:#777;margin-bottom:26px;font-size:.88rem;line-height:1.6">Create categorisation activities. Fully editable — change categories, statements, and answers. Save multiple activities.</p>
+    <button id="btn-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px;border-radius:12px;border:1.5px solid rgba(28,28,46,.1);background:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;">
+      <svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <p style="font-size:.72rem;color:#bbb;margin-top:14px;"><a href="index.html" style="color:#aaa">← Back to TeacherKit</a></p>
+  </div>
+</div>`;
+  document.getElementById('btn-login')?.addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('Login failed')));
+}
+
+function buildUI(){
+  const u=user; const init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  document.getElementById('nav-right').innerHTML=`
+    <div class="avatar">${u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`}</div>
+    <button class="btn btn-primary btn-sm" id="btn-reset-play">↩ Reset</button>
+    <a class="btn btn-sm" href="index.html">← Hub</a>`;
+  document.getElementById('layout').innerHTML=`
+<div class="editor-panel" id="editor-panel"></div>
+<div class="play-area" id="play-area"></div>`;
+  document.getElementById('btn-reset-play')?.addEventListener('click',()=>{placed={};checked={};score=0;renderPlay();});
+  renderEditor(); renderPlay();
+}
+
+function renderEditor(){
+  const ep=document.getElementById('editor-panel'); if(!ep) return;
+  ep.innerHTML=`
+<div class="ep-title">💬 Activity Editor</div>
+
+<div class="section-box">
+  <h4>Activity Name</h4>
+  <div class="field"><input id="act-name" value="${esc(A.name)}" placeholder="e.g. Bullying vs Cyberbullying"/></div>
+  <div style="display:flex;gap:6px">
+    <button class="btn btn-gold btn-sm" id="btn-save-act" style="flex:1">💾 Save</button>
+    <button class="btn btn-primary btn-sm" id="btn-new-act">+ New</button>
+  </div>
+</div>
+
+<div class="section-box">
+  <h4>Categories (${A.categories.length})</h4>
+  <div class="cat-list" id="cat-list">
+    ${A.categories.map((c,i)=>`
+      <div class="cat-row">
+        <input type="color" class="cat-color" value="${c.color}" data-cat-color="${i}" style="width:28px;height:22px;border:none;border-radius:4px;padding:0;cursor:pointer;"/>
+        <input class="cat-name" value="${esc(c.name)}" data-cat-name="${i}" placeholder="Category name"/>
+        <button class="cat-x" data-del-cat="${i}">✕</button>
+      </div>`).join('')}
+  </div>
+  <button class="btn btn-sm" id="add-cat" style="margin-top:8px;width:100%">+ Add Category</button>
+</div>
+
+<div class="section-box">
+  <h4>Statements (${A.statements.length})</h4>
+  <div class="stmt-list" id="stmt-list">
+    ${A.statements.map((s,i)=>`
+      <div class="stmt-row">
+        <div class="stmt-top">
+          <textarea class="stmt-text" data-stmt-text="${i}" rows="2">${esc(s.text)}</textarea>
+          <button class="stmt-x" data-del-stmt="${i}">✕</button>
+        </div>
+        <select class="stmt-cat-sel" data-stmt-cat="${i}">
+          ${A.categories.map(c=>`<option value="${c.id}" ${s.cat===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}
+        </select>
+      </div>`).join('')}
+  </div>
+  <button class="btn btn-sm" id="add-stmt" style="margin-top:8px;width:100%">+ Add Statement</button>
+</div>
+
+<div class="section-box">
+  <h4>Saved Activities (${saved.length})</h4>
+  <div class="saved-list">
+    ${saved.length?saved.map(s=>`
+      <div class="saved-row" data-load-act="${s.id}">
+        <div style="flex:1"><div style="font-size:.82rem;font-weight:600">${esc(s.name)}</div><div style="font-size:.7rem;color:#aaa">${s.categories?.length||0} cats · ${s.statements?.length||0} stmts</div></div>
+        <button class="btn btn-danger btn-sm" data-del-act="${s.id}">🗑</button>
+      </div>`).join(''):`<p style="color:#bbb;font-size:.78rem;text-align:center;padding:8px">None saved yet</p>`}
+  </div>
+</div>`;
+
+  // bindings
+  document.getElementById('act-name')?.addEventListener('input',e=>A.name=e.target.value);
+  document.getElementById('btn-save-act')?.addEventListener('click',saveActivity);
+  document.getElementById('btn-new-act')?.addEventListener('click',()=>{
+    A={id:null,name:'',categories:[{id:uid(),name:'Category A',color:'#3d7eb5'},{id:uid(),name:'Category B',color:'#c8584a'}],statements:[]};
+    placed={};checked={};score=0; renderEditor(); renderPlay();
+  });
+  document.querySelectorAll('[data-cat-color]').forEach(inp=>inp.addEventListener('input',e=>{A.categories[+inp.dataset.catColor].color=e.target.value;renderPlay();}));
+  document.querySelectorAll('[data-cat-name]').forEach(inp=>inp.addEventListener('input',e=>{A.categories[+inp.dataset.catName].name=e.target.value;renderPlay();}));
+  document.querySelectorAll('[data-del-cat]').forEach(btn=>btn.addEventListener('click',()=>{A.categories.splice(+btn.dataset.delCat,1);renderEditor();renderPlay();}));
+  document.getElementById('add-cat')?.addEventListener('click',()=>{A.categories.push({id:uid(),name:'New Category',color:CAT_COLORS[A.categories.length%CAT_COLORS.length]});renderEditor();renderPlay();});
+  document.querySelectorAll('[data-stmt-text]').forEach(ta=>ta.addEventListener('input',e=>{A.statements[+ta.dataset.stmtText].text=e.target.value;}));
+  document.querySelectorAll('[data-stmt-cat]').forEach(sel=>sel.addEventListener('change',e=>{A.statements[+sel.dataset.stmtCat].cat=e.target.value;}));
+  document.querySelectorAll('[data-del-stmt]').forEach(btn=>btn.addEventListener('click',()=>{A.statements.splice(+btn.dataset.delStmt,1);renderEditor();renderPlay();}));
+  document.getElementById('add-stmt')?.addEventListener('click',()=>{
+    A.statements.push({id:uid(),text:'New statement',cat:A.categories[0]?.id||''});
+    renderEditor();renderPlay();
+  });
+  document.querySelectorAll('[data-load-act]').forEach(row=>row.addEventListener('click',e=>{if(e.target.dataset.delAct)return;const s=saved.find(x=>x.id===row.dataset.loadAct);if(s)loadActivity(s);}));
+  document.querySelectorAll('[data-del-act]').forEach(btn=>btn.addEventListener('click',async e=>{e.stopPropagation();await deleteActivity(btn.dataset.delAct);}));
+}
+
+function renderPlay(){
+  const pa=document.getElementById('play-area'); if(!pa) return;
+  // unplaced statements
+  const unplaced=A.statements.filter(s=>!placed[s.id]);
+  // drop zones per category
+  const zonesCount=A.categories.length;
+  const gridCols=zonesCount<=2?zonesCount:Math.ceil(Math.sqrt(zonesCount));
+
+  pa.innerHTML=`
+<div class="play-header">
+  <h2>${esc(A.name)||'Drag & Sort Activity'}</h2>
+  <p>Drag each card to the correct category.</p>
+</div>
+<div class="play-body">
+  <div class="score-bar">
+    <span class="score-num">${score}</span>
+    <span class="score-label">/ ${Object.keys(checked).length} checked · ${Object.keys(placed).length} placed · ${A.statements.length} total</span>
+    ${Object.keys(placed).length===A.statements.length?`<span style="margin-left:auto;font-size:1.2rem">🎉 All placed!</span>`:''}
+  </div>
+
+  <div style="background:var(--surface);border-radius:14px;padding:16px;border:1px solid var(--border);">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#aaa;margin-bottom:10px;">Cards to sort</div>
+    <div class="cards-pool" id="cards-pool">
+      ${unplaced.map(s=>`
+        <div class="stmt-card" id="card-${s.id}" draggable="true" data-sid="${s.id}">
+          ${esc(s.text)}
+        </div>`).join('')}
+      ${unplaced.length===0?`<span style="color:#bbb;font-size:.82rem">All cards placed!</span>`:''}
+    </div>
+  </div>
+
+  <div class="drop-zones" style="grid-template-columns:repeat(${gridCols},1fr);">
+    ${A.categories.map(cat=>{
+      const catCards=A.statements.filter(s=>placed[s.id]===cat.id);
+      return `
+<div class="drop-zone ${Object.keys(placed).length===A.statements.length?'correct-zone':''}" id="zone-${cat.id}" data-zone="${cat.id}">
+  <div class="drop-zone-header">
+    <div class="drop-zone-dot" style="background:${cat.color}"></div>
+    <div class="drop-zone-name">${esc(cat.name)}</div>
+    <span style="margin-left:auto;font-size:.72rem;color:#aaa">${catCards.length} cards</span>
+  </div>
+  <div class="drop-zone-cards" id="zone-cards-${cat.id}">
+    ${catCards.map(s=>{
+      const isCorrect=s.cat===cat.id;
+      return `<div class="stmt-card ${isCorrect?'correct-placed':''}" data-sid="${s.id}" style="background:${isCorrect?'rgba(74,124,111,.12)':'rgba(200,88,74,.12)'};border-color:${isCorrect?'var(--sage)':'var(--rose)'};">${esc(s.text)}</div>`;
+    }).join('')}
+  </div>
+</div>`}).join('')}
+  </div>
+</div>`;
+
+  bindPlay();
+}
+
+function bindPlay(){
+  let dragging=null;
+  document.querySelectorAll('[draggable="true"][data-sid]').forEach(card=>{
+    card.addEventListener('dragstart',e=>{dragging=card.dataset.sid;card.classList.add('dragging');});
+    card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+  });
+  document.querySelectorAll('[data-zone]').forEach(zone=>{
+    zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
+    zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+    zone.addEventListener('drop',e=>{
+      e.preventDefault(); zone.classList.remove('drag-over');
+      if(!dragging) return;
+      const sid=dragging; dragging=null;
+      const catId=zone.dataset.zone;
+      const stmt=A.statements.find(s=>s.id===sid);
+      if(!stmt) return;
+      placed[sid]=catId;
+      checked[sid]=true;
+      if(stmt.cat===catId) score++;
+      else toast(`Not quite — try a different category`);
+      renderPlay();
+    });
+  });
+  // touch support
+  document.querySelectorAll('[draggable="true"][data-sid]').forEach(card=>{
+    card.addEventListener('touchstart',e=>{dragging=card.dataset.sid;},{passive:true});
+    card.addEventListener('touchend',e=>{
+      if(!dragging) return;
+      const touch=e.changedTouches[0];
+      const el=document.elementFromPoint(touch.clientX,touch.clientY);
+      const zone=el?.closest('[data-zone]');
+      if(zone){
+        const catId=zone.dataset.zone;
+        const stmt=A.statements.find(s=>s.id===dragging);
+        if(stmt){ placed[dragging]=catId; checked[dragging]=true; if(stmt.cat===catId) score++; else toast('Not quite!'); renderPlay(); }
+      }
+      dragging=null;
+    });
+  });
+}
+
+function toast(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2800);}
+</script>
+</body>
+</html>

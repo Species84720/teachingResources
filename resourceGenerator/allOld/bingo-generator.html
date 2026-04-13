@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Bingo Generator — TeacherKit</title>
+  <link href="shared.css" rel="stylesheet" />
+  <style>
+    .bingo-wrap { display: flex; gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; align-items: flex-start; }
+    .sidebar { width: 320px; background: var(--surface); padding: 20px; border-radius: 8px; box-shadow: var(--shadow-sm); flex-shrink: 0; }
+    .main-area { flex: 1; }
+    
+    .sheet { background: white; padding: 30px; margin-bottom: 30px; border: 2px solid var(--ink); border-radius: 8px; text-align: center; box-shadow: var(--shadow-md); }
+    .sheet h2 { font-family: var(--ff); color: var(--gold-dk); margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; }
+    
+    .bingo-grid { display: grid; gap: 5px; margin: 0 auto; max-width: 600px; }
+    .bingo-cell { border: 2px solid var(--ink); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 10px; background: var(--warm); }
+    .bingo-cell img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+    
+    .image-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; max-height: 200px; overflow-y: auto; }
+    .image-list img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+    
+    .input-group { margin-bottom: 15px; }
+    .input-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.9rem; }
+    .input-group input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html" class="logo">Teacher<span>Kit</span></a>
+    <div class="nav-right">
+      <button class="btn btn-gold" id="btn-save">Save to Firebase</button>
+    </div>
+  </div>
+
+  <div class="bingo-wrap">
+    <div class="sidebar">
+      <h3 style="margin-bottom: 15px; font-family: var(--ff);">Settings</h3>
+      
+      <div class="input-group">
+        <label>Grid Size (e.g. 3 for 3x3):</label>
+        <input type="number" id="grid-size" value="3" min="2" max="5">
+      </div>
+      
+      <div class="input-group">
+        <label>Number of Sheets to Generate:</label>
+        <input type="number" id="num-sheets" value="5" min="1" max="50">
+      </div>
+      
+      <hr style="margin:20px 0; border: 0; border-top: 1px solid var(--border);">
+      
+      <h3 style="margin-bottom: 15px; font-family: var(--ff);">Add Images</h3>
+      <div class="input-group">
+        <input type="text" id="img-url" placeholder="Paste an image URL here">
+      </div>
+      <button class="btn btn-sm" id="btn-add-img" style="width:100%; justify-content:center;">+ Add Image</button>
+      
+      <div class="image-list" id="image-list"></div>
+      
+      <button class="btn btn-primary" id="btn-generate" style="width:100%; margin-top: 30px; justify-content:center;">Generate Bingo Sheets</button>
+    </div>
+
+    <div class="main-area" id="sheets-container">
+      <div style="text-align: center; color: #888; margin-top: 100px; font-size: 1.1rem;">
+        Add some images to the sidebar, set your grid size, and click <strong>Generate</strong> to see your Bingo sheets here.
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    let images = [];
+    let generatedSheets = [];
+
+    // Add Image
+    document.getElementById('btn-add-img').addEventListener('click', () => {
+        const urlInput = document.getElementById('img-url');
+        if (urlInput.value.trim() !== '') {
+            images.push(urlInput.value.trim());
+            urlInput.value = '';
+            renderImages();
+        }
+    });
+
+    // Display added images in the sidebar
+    function renderImages() {
+        const list = document.getElementById('image-list');
+        list.innerHTML = images.map(src => `<img src="${src}" alt="Bingo item" />`).join('');
+    }
+
+    // Fisher-Yates Shuffle Algorithm
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    // Generate Sheets
+    document.getElementById('btn-generate').addEventListener('click', () => {
+        const size = parseInt(document.getElementById('grid-size').value);
+        const numSheets = parseInt(document.getElementById('num-sheets').value);
+        const container = document.getElementById('sheets-container');
+        
+        const needed = size * size;
+        if (images.length < needed) {
+            alert(`You need at least ${needed} images for a ${size}x${size} grid. You currently have ${images.length} added.`);
+            return;
+        }
+
+        generatedSheets = [];
+        container.innerHTML = ''; // Clear previous
+
+        for (let i = 0; i < numSheets; i++) {
+            // Shuffle a copy of the images array and take what is needed
+            const sheetImages = shuffle([...images]).slice(0, needed);
+            generatedSheets.push({ grid: size, cells: sheetImages });
+
+            // Create UI for the sheet
+            const sheetDiv = document.createElement('div');
+            sheetDiv.className = 'sheet';
+            sheetDiv.innerHTML = `<h2>Bingo Sheet #${i + 1}</h2>`;
+            
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'bingo-grid';
+            gridDiv.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+            
+            sheetImages.forEach(imgSrc => {
+                const cell = document.createElement('div');
+                cell.className = 'bingo-cell';
+                cell.innerHTML = `<img src="${imgSrc}" />`;
+                gridDiv.appendChild(cell);
+            });
+            
+            sheetDiv.appendChild(gridDiv);
+            container.appendChild(sheetDiv);
+        }
+    });
+
+    // Save to Firebase
+    document.getElementById('btn-save').addEventListener('click', async () => {
+        if(!auth.currentUser) return alert("Please log in via the dashboard first!");
+        if(generatedSheets.length === 0) return alert("Generate some sheets before saving!");
+        
+        try {
+            await addDoc(collection(db, "bingoSheets"), { 
+                uid: auth.currentUser.uid, 
+                gridSize: parseInt(document.getElementById('grid-size').value),
+                totalSheets: generatedSheets.length,
+                sheets: generatedSheets, // Saves the exact image permutations
+                createdAt: new Date()
+            });
+            alert("Bingo Sheets successfully saved to Firebase!");
+        } catch (error) {
+            console.error("Error saving to Firebase:", error);
+            alert("Failed to save. Check console for details.");
+        }
+    });
+  </script>
+</body>
+</html>

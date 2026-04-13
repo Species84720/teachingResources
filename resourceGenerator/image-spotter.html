@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Image Analyser — TeacherKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;--gold:#e9a825;--gold-dk:#c8891a;--lav:#7563b8;--lav-lt:rgba(117,99,184,.12);--rose:#c8584a;--sage:#4a7c6f;--surface:#fff;--border:rgba(28,28,46,.10);--ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;}
+    body{font-family:var(--fb);background:var(--cream);color:var(--ink);min-height:100vh;}
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:13px 24px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06);}
+    .logo{font-family:var(--ff);font-weight:900;font-size:1.25rem;text-decoration:none;color:var(--ink);}.logo span{color:var(--gold);}
+    .nav-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .17s;background:transparent;color:var(--ink);}
+    .btn:hover{border-color:var(--ink);background:var(--warm);}
+    .btn-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}.btn-gold:hover{background:var(--gold-dk);}
+    .btn-primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+    .btn-lav{background:var(--lav);color:#fff;border-color:var(--lav);}
+    .btn-danger{background:var(--rose);color:#fff;border-color:var(--rose);}
+    .btn-sage{background:var(--sage);color:#fff;border-color:var(--sage);}
+    .btn-sm{padding:5px 12px;font-size:.76rem;}.btn:disabled{opacity:.4;pointer-events:none;}
+    .avatar{width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.75rem;overflow:hidden;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+    .layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 54px);}
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+    .main-area{padding:24px;overflow-y:auto;}
+    .sbox{background:var(--cream);border-radius:12px;padding:14px;border:1px solid var(--border);}
+    .sbox h4{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#aaa;margin-bottom:10px;}
+    .field{margin-bottom:10px;}.field label{display:block;font-weight:600;font-size:.78rem;margin-bottom:4px;color:#555;}
+    .field input,.field textarea,.field select{width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:.85rem;background:var(--surface);color:var(--ink);outline:none;}
+    .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--gold);}
+    .slide-list{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;}
+    .slide-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface);border:1.5px solid transparent;cursor:pointer;transition:all .15s;}
+    .slide-row:hover,.slide-row.active{border-color:var(--lav);background:var(--lav-lt);}
+    .slide-thumb-img{width:48px;height:32px;border-radius:5px;object-fit:cover;background:#eee;}
+    .slide-badge{font-size:.65rem;padding:2px 7px;border-radius:100px;font-weight:700;}
+    .badge-mal{background:rgba(200,88,74,.15);color:var(--rose);}.badge-real{background:rgba(74,124,111,.15);color:var(--sage);}.badge-unset{background:var(--warm);color:#aaa;}
+    .canvas-wrap{position:relative;display:inline-block;}
+    canvas{border-radius:10px;display:block;box-shadow:0 8px 28px rgba(28,28,46,.15);cursor:crosshair;max-width:100%;}
+    .hp-list{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto;margin-top:8px;}
+    .hp-row{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:7px;background:var(--surface);border:1.5px solid var(--border);font-size:.78rem;}
+    .hp-n{width:18px;height:18px;border-radius:5px;background:rgba(200,0,0,.7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;}
+    .hp-del{border:none;background:none;cursor:pointer;color:#ccc;font-size:.8rem;}.hp-del:hover{color:var(--rose);}
+    .quiz-list{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;}
+    .quiz-row{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:var(--warm);cursor:pointer;border:1.5px solid transparent;transition:all .15s;}
+    .quiz-row:hover{border-color:var(--lav);}
+    .mode-tabs{display:flex;gap:6px;margin-bottom:16px;}
+    .mode-tab{padding:7px 18px;border-radius:100px;border:1.5px solid var(--border);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .15s;}
+    .mode-tab.active{background:var(--lav);color:#fff;border-color:var(--lav);}
+    /* Score panel */
+    .score-panel{background:var(--surface);border-radius:14px;padding:20px;border:1px solid var(--border);box-shadow:0 4px 16px rgba(28,28,46,.07);}
+    .score-big{font-family:var(--ff);font-size:2.8rem;font-weight:900;color:var(--gold);line-height:1;}
+    .score-detail{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+    .score-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--warm);border-radius:8px;font-size:.82rem;}
+    .score-row.good{background:#d1fae5;color:#065f46;}
+    .score-row.bad{background:#fee2e2;color:#991b1b;}
+    /* Student login */
+    .student-login{display:grid;place-items:center;min-height:calc(100vh - 54px);}
+    /* Nickname badge in nav */
+    .nick-badge{background:var(--lav-lt);border:1.5px solid var(--lav);border-radius:100px;padding:4px 12px;font-size:.78rem;font-weight:700;color:var(--lav);}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 20px;border-radius:100px;font-size:.82rem;font-weight:600;z-index:9999;animation:tIn .25s ease;pointer-events:none;}
+    @keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">Teacher<span>Kit</span></a>
+  <span style="color:#bbb;font-size:.8rem;margin-left:4px">/ Image Analyser</span>
+  <div class="nav-right" id="nav-right"></div>
+</nav>
+<div class="layout" id="layout">
+  <div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 54px);opacity:.4">Loading…</div>
+</div>
+
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+
+const fbApp=initializeApp(firebaseConfig), auth=getAuth(fbApp), db=getFirestore(fbApp);
+const COL=COLLECTIONS.spotter;
+
+let user=null, saved=[], studentNick=null;
+let quiz={id:null,name:'',slides:[]};
+let slideIdx=0, mode='editor';
+// Viewer state
+let vSlideIdx=0, vAnswers=[];
+
+/* ── Check URL params: ?mode=student loads student login ── */
+const urlParams=new URLSearchParams(window.location.search);
+const isStudentMode = urlParams.get('mode')==='student';
+
+onAuthStateChanged(auth, async u=>{
+  user=u;
+  if(isStudentMode){ buildStudentLoginUI(); return; }
+  if(u){ await loadSaved(); buildUI(); }
+  else  buildLoginUI();
+});
+
+async function loadSaved(){
+  const q=query(collection(db,COL),where('uid','==',user.uid));
+  const snap=await getDocs(q);
+  saved=snap.docs.map(d=>({id:d.id,...d.data()}));
+  saved.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
+}
+async function saveQuiz(){
+  if(!quiz.name.trim()){toast('Enter a quiz name');return;}
+  const id=quiz.id||(quiz.id='ph_'+Date.now());
+  try{
+    await setDoc(doc(db,COL,id),{uid:user.uid,...quiz,isPublic:!!quiz.isPublic,updatedAt:serverTimestamp()},{merge:true});
+    await loadSaved();renderSidebar();toast('Saved ✓');
+  }catch{toast('Save failed — check Firebase');}
+}
+async function deleteQuiz(id){
+  await deleteDoc(doc(db,COL,id));
+  if(quiz.id===id)quiz={id:null,name:'',slides:[]};
+  await loadSaved();renderSidebar();toast('Deleted');
+}
+function loadQuiz(q){quiz=JSON.parse(JSON.stringify(q));slideIdx=0;mode='editor';renderSidebar();renderMain();}
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ── STUDENT NICKNAME LOGIN ── */
+function buildStudentLoginUI(){
+  document.getElementById('layout').innerHTML=`
+<div class="student-login" style="grid-column:1/-1">
+  <div style="background:#fff;border-radius:24px;padding:48px 40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(28,28,46,.15);">
+    <div style="font-size:3rem;margin-bottom:18px">🕵️</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:10px">Image <span style="color:#e9a825">Analyser</span></h2>
+    <p style="color:#777;margin-bottom:24px;font-size:.88rem;line-height:1.6">Enter your name to start the quiz. No account needed!</p>
+    <input id="nick-input" style="width:100%;padding:13px 16px;border:1.5px solid rgba(28,28,46,.12);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:1rem;outline:none;margin-bottom:14px;text-align:center" placeholder="Your name…" autofocus/>
+    <button id="btn-start" style="width:100%;padding:13px;border-radius:12px;border:none;background:var(--lav);color:#fff;font-family:'DM Sans',sans-serif;font-weight:700;font-size:1rem;cursor:pointer;">Start Quiz →</button>
+    <p style="font-size:.72rem;color:#bbb;margin-top:14px"><a href="image-spotter.html" style="color:#aaa">← Teacher login</a></p>
+  </div>
+</div>`;
+  document.getElementById('nick-input')?.addEventListener('keydown',e=>{if(e.key==='Enter')startStudentQuiz();});
+  document.getElementById('btn-start')?.addEventListener('click',startStudentQuiz);
+}
+
+async function startStudentQuiz(){
+  const nick=document.getElementById('nick-input')?.value.trim();
+  if(!nick){toast('Enter your name first!');return;}
+  studentNick=nick;
+  // Load saved quizzes (student can see all public quizzes)
+  try{
+    // Load only quizzes marked as public by their teacher
+    const q=query(collection(db,COL),where('isPublic','==',true));
+    const snap=await getDocs(q);
+    saved=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!saved.length) toast('No public quizzes found. Ask your teacher to publish one.');
+  }catch(e){toast('Could not load quizzes. Ask your teacher to check Firestore rules allow public read.');}
+  buildStudentQuizPicker();
+}
+
+function buildStudentQuizPicker(){
+  const nr=document.getElementById('nav-right');
+  nr.innerHTML=`<span class="nick-badge">👤 ${esc(studentNick)}</span>`;
+  document.getElementById('layout').innerHTML=`
+<div style="grid-column:1/-1;padding:32px;max-width:700px;margin:0 auto">
+  <h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:6px">Choose a Quiz</h2>
+  <p style="color:#777;margin-bottom:24px">Playing as <strong>${esc(studentNick)}</strong></p>
+  <div style="display:flex;flex-direction:column;gap:10px">
+    ${saved.length?saved.map(s=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;background:#fff;border-radius:14px;border:1.5px solid var(--border);cursor:pointer;transition:all .15s" data-pick="${s.id}" onmouseenter="this.style.borderColor='var(--lav)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <div style="flex:1"><div style="font-weight:700;font-size:1rem">${esc(s.name)}</div><div style="font-size:.78rem;color:#aaa;margin-top:2px">${s.slides?.length||0} slides</div></div>
+        <span style="color:var(--lav);font-weight:700;font-size:.85rem">Play →</span>
+      </div>`).join(''):`<p style="color:#bbb;text-align:center;padding:24px">No quizzes available</p>`}
+  </div>
+</div>`;
+  document.querySelectorAll('[data-pick]').forEach(row=>row.addEventListener('click',()=>{
+    const s=saved.find(x=>x.id===row.dataset.pick);
+    if(s){quiz=JSON.parse(JSON.stringify(s));mode='viewer';vSlideIdx=0;vAnswers=quiz.slides.map(()=>({clicks:[],choice:null,finished:false}));buildStudentViewerUI();}
+  }));
+}
+
+function buildStudentViewerUI(){
+  document.getElementById('layout').innerHTML=`<div style="grid-column:1/-1;padding:24px" id="student-viewer"></div>`;
+  renderStudentSlide();
+}
+
+/* ── TEACHER UI ── */
+function buildLoginUI(){
+  document.getElementById('layout').innerHTML=`
+<div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 54px)">
+  <div style="background:#fff;border-radius:24px;padding:48px 40px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(28,28,46,.15)">
+    <div style="font-size:3rem;margin-bottom:18px">🕵️</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:10px">Image <span style="color:#e9a825">Analyser</span></h2>
+    <p style="color:#777;margin-bottom:26px;font-size:.88rem;line-height:1.6">Upload screenshots, mark hotspots, label slides as real or malicious.</p>
+    <button id="btn-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:12px;padding:13px;border-radius:12px;border:1.5px solid rgba(28,28,46,.1);background:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer">
+      <svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <p style="font-size:.72rem;color:#bbb;margin-top:14px"><a href="index.html" style="color:#aaa">← Back to TeacherKit</a></p>
+    <p style="font-size:.72rem;color:#bbb;margin-top:6px"><a href="?mode=student" style="color:var(--lav)">🧑‍🎓 Student mode (no login)</a></p>
+  </div>
+</div>`;
+  document.getElementById('btn-login')?.addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('Login failed')));
+}
+
+function buildUI(){
+  const u=user;const init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  document.getElementById('nav-right').innerHTML=`<div class="avatar">${u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`}</div><a class="btn btn-sm" href="?mode=student" target="_blank">🧑‍🎓 Student Link</a><a class="btn btn-sm" href="index.html">← Hub</a>`;
+  document.getElementById('layout').innerHTML=`<div class="sidebar" id="sidebar"></div><div class="main-area" id="main-area"></div>`;
+  renderSidebar();renderMain();
+}
+
+function renderSidebar(){
+  const sb=document.getElementById('sidebar');if(!sb)return;
+  const slide=quiz.slides[slideIdx];
+  sb.innerHTML=`
+<div style="font-family:var(--ff);font-weight:800;font-size:1rem">🕵️ Image Analyser</div>
+<div class="sbox">
+  <h4>Quiz Name</h4>
+  <div class="field"><input id="quiz-name" value="${esc(quiz.name)}" placeholder="e.g. Phishing Quiz 1"/></div>
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;padding:6px 8px;background:rgba(117,99,184,.08);border-radius:8px;border:1px solid rgba(117,99,184,.2)">
+    <input type="checkbox" id="is-public" ${quiz.isPublic?'checked':''} style="width:16px;height:16px;accent-color:var(--lav);cursor:pointer"/>
+    <label for="is-public" style="font-size:.78rem;font-weight:600;color:var(--lav);cursor:pointer">Publish for students</label>
+    <span style="font-size:.68rem;color:#aaa">(visible at ?mode=student)</span>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button class="btn btn-lav btn-sm" id="btn-save" style="flex:1">💾 Save</button>
+    <button class="btn btn-sm" id="btn-new">+ New</button>
+  </div>
+</div>
+<div class="sbox">
+  <h4>Slides (${quiz.slides.length})</h4>
+  <div class="slide-list">
+    ${quiz.slides.map((s,i)=>{
+      const badge=s.is_malicious===true?'<span class="slide-badge badge-mal">⚠ Malicious</span>':s.is_malicious===false?'<span class="slide-badge badge-real">✓ Real</span>':'<span class="slide-badge badge-unset">? Unset</span>';
+      return `<div class="slide-row ${i===slideIdx?'active':''}" data-si="${i}">
+        ${s.image?`<img class="slide-thumb-img" src="${s.image}"/>`:`<div class="slide-thumb-img" style="background:#eee;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#bbb">No img</div>`}
+        <span style="flex:1;font-size:.8rem;font-weight:600">Slide ${i+1}</span>${badge}
+        ${quiz.slides.length>1?`<button class="btn btn-sm btn-danger" data-del-slide="${i}" style="padding:2px 7px">✕</button>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="display:flex;gap:6px;margin-top:8px">
+    <button class="btn btn-sm" id="btn-add-slide" style="flex:1">+ Add Slide</button>
+  </div>
+  ${slide?`
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+    <h4 style="font-size:.68rem;margin-bottom:8px">CURRENT SLIDE</h4>
+    <div class="field"><label>Upload Image</label><input type="file" accept="image/*" id="slide-img"/></div>
+    <div class="field"><label>Button Labels</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <input id="true-label" placeholder="Malicious label" value="${esc(slide.labels?.trueLabel||'Malicious')}"/>
+        <input id="false-label" placeholder="Real label" value="${esc(slide.labels?.falseLabel||'Real')}"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-sm btn-danger" id="btn-mark-true" style="flex:1">${esc(slide.labels?.trueLabel||'Malicious')}</button>
+      <button class="btn btn-sm btn-sage" id="btn-mark-false" style="flex:1">${esc(slide.labels?.falseLabel||'Real')}</button>
+    </div>
+    <div style="font-size:.72rem;font-weight:700;color:#aaa;margin-top:8px">Mark as: <span style="color:${slide.is_malicious===true?'var(--rose)':slide.is_malicious===false?'var(--sage)':'#bbb'}">${slide.is_malicious===true?(slide.labels?.trueLabel||'Malicious'):slide.is_malicious===false?(slide.labels?.falseLabel||'Real'):'Not set'}</span></div>
+    ${slide.points?.length?`
+    <div style="margin-top:10px"><h4 style="font-size:.68rem;margin-bottom:6px">HOTSPOTS (${slide.points.length}) <span style="font-weight:400">+1pt each</span></h4>
+    <div class="hp-list">${slide.points.map((p,pi)=>`<div class="hp-row"><div class="hp-n">${pi+1}</div><div style="flex:1;font-size:.75rem;color:#555">${Math.round(p.x*100)}%, ${Math.round(p.y*100)}% (r=${p.r||28}px)</div><button class="hp-del" data-del-hp="${pi}">✕</button></div>`).join('')}</div>
+    </div>`:''}
+  </div>`:'' }
+</div>
+<div class="sbox">
+  <h4>Saved Quizzes (${saved.length})</h4>
+  <div class="quiz-list">
+    ${saved.map(s=>`<div class="quiz-row" data-load-quiz="${s.id}"><div style="flex:1"><div style="font-size:.8rem;font-weight:600">${esc(s.name)}</div><div style="font-size:.7rem;color:#aaa">${s.slides?.length||0} slides</div></div><button class="btn btn-danger btn-sm" data-del-quiz="${s.id}">🗑</button></div>`).join('')||'<span style="font-size:.72rem;color:#bbb">None yet</span>'}
+  </div>
+</div>`;
+
+  document.getElementById('quiz-name')?.addEventListener('input',e=>quiz.name=e.target.value);
+  document.getElementById('is-public')?.addEventListener('change',e=>quiz.isPublic=e.target.checked);
+  document.getElementById('btn-save')?.addEventListener('click',saveQuiz);
+  document.getElementById('btn-new')?.addEventListener('click',()=>{quiz={id:null,name:'',slides:[newSlide()]};slideIdx=0;renderSidebar();renderMain();});
+  document.getElementById('btn-add-slide')?.addEventListener('click',()=>{quiz.slides.push(newSlide());slideIdx=quiz.slides.length-1;renderSidebar();renderMain();});
+  document.querySelectorAll('[data-si]').forEach(row=>row.addEventListener('click',e=>{if(e.target.dataset.delSlide)return;slideIdx=+row.dataset.si;renderSidebar();renderMain();}));
+  document.querySelectorAll('[data-del-slide]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();quiz.slides.splice(+btn.dataset.delSlide,1);slideIdx=Math.min(slideIdx,quiz.slides.length-1);renderSidebar();renderMain();}));
+  if(slide){
+    document.getElementById('slide-img')?.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{slide.image=ev.target.result;renderSidebar();renderMain();};r.readAsDataURL(f);});
+    document.getElementById('true-label')?.addEventListener('input',e=>{slide.labels=slide.labels||{};slide.labels.trueLabel=e.target.value;});
+    document.getElementById('false-label')?.addEventListener('input',e=>{slide.labels=slide.labels||{};slide.labels.falseLabel=e.target.value;});
+    document.getElementById('btn-mark-true')?.addEventListener('click',()=>{slide.is_malicious=true;renderSidebar();});
+    document.getElementById('btn-mark-false')?.addEventListener('click',()=>{slide.is_malicious=false;renderSidebar();});
+    document.querySelectorAll('[data-del-hp]').forEach(btn=>btn.addEventListener('click',()=>{slide.points.splice(+btn.dataset.delHp,1);renderMain();renderSidebar();}));
+  }
+  document.querySelectorAll('[data-load-quiz]').forEach(row=>row.addEventListener('click',e=>{if(e.target.dataset.delQuiz)return;const s=saved.find(x=>x.id===row.dataset.loadQuiz);if(s)loadQuiz(s);}));
+  document.querySelectorAll('[data-del-quiz]').forEach(btn=>btn.addEventListener('click',async e=>{e.stopPropagation();await deleteQuiz(btn.dataset.delQuiz);}));
+}
+
+function newSlide(){return{id:'sl_'+Date.now(),image:'',is_malicious:null,points:[],labels:{trueLabel:'Malicious',falseLabel:'Real'}};}
+
+function renderMain(){
+  const ma=document.getElementById('main-area');if(!ma)return;
+  ma.innerHTML=`
+<div class="mode-tabs">
+  <div class="mode-tab ${mode==='editor'?'active':''}" id="tab-editor">✏️ Editor</div>
+  <div class="mode-tab ${mode==='viewer'?'active':''}" id="tab-viewer">▶ Student Preview</div>
+</div>
+${mode==='editor'?renderEditorArea():renderViewerArea()}`;
+  document.getElementById('tab-editor')?.addEventListener('click',()=>{mode='editor';renderMain();});
+  document.getElementById('tab-viewer')?.addEventListener('click',()=>{mode='viewer';vSlideIdx=0;vAnswers=quiz.slides.map(()=>({clicks:[],choice:null,finished:false}));renderMain();});
+  if(mode==='editor') bindEditor();
+  else bindViewer(document.getElementById('viewer-canvas'));
+}
+
+function renderEditorArea(){
+  const slide=quiz.slides[slideIdx];
+  if(!slide) return `<div style="display:flex;align-items:center;justify-content:center;height:400px;color:#bbb;flex-direction:column;gap:12px"><div style="font-size:2.5rem">🕵️</div><div>Add a slide to get started</div></div>`;
+  return `
+<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+  <h2 style="font-family:var(--ff);font-size:1.4rem;font-weight:800">Slide ${slideIdx+1} Editor</h2>
+  <span style="font-size:.75rem;color:#aaa">Left-click: add/cycle hotspot · Right-click: remove</span>
+</div>
+<div class="canvas-wrap" id="canvas-wrap">
+  ${slide.image?`<canvas id="editor-canvas" style="max-width:100%;cursor:crosshair;"></canvas>`:`<div style="width:700px;height:420px;background:var(--warm);border-radius:10px;border:2px dashed rgba(28,28,46,.15);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#bbb"><div style="font-size:2rem">🖼</div><div>Upload an image in the sidebar</div></div>`}
+</div>`;
+}
+
+function bindEditor(){
+  const slide=quiz.slides[slideIdx];if(!slide||!slide.image)return;
+  const canvas=document.getElementById('editor-canvas');if(!canvas)return;
+  const img=new Image();
+  img.onload=()=>{
+    const maxW=Math.min(800,document.querySelector('.main-area')?.clientWidth-48||760);
+    const ratio=Math.min(maxW/img.width,480/img.height,1);
+    canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);
+    drawEditorCanvas(canvas,img,slide);
+  };
+  img.src=slide.image;
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  canvas.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    // FIX: use rect.width/rect.height for normalisation (CSS display size), not canvas.width/height
+    const x=(e.clientX-rect.left)/rect.width;
+    const y=(e.clientY-rect.top)/rect.height;
+    if(!slide.points)slide.points=[];
+    if(e.button===2){
+      const idx=slide.points.findIndex(p=>{
+        const dx=(x-p.x)*canvas.width,dy=(y-p.y)*canvas.height;
+        return Math.hypot(dx,dy)<(p.r||28);
+      });
+      if(idx>=0)slide.points.splice(idx,1);
+    }else{
+      const existing=slide.points.find(p=>{
+        const dx=(x-p.x)*canvas.width,dy=(y-p.y)*canvas.height;
+        return Math.hypot(dx,dy)<(p.r||28);
+      });
+      if(existing){const sizes=[16,28,40,60];existing.r=sizes[(sizes.indexOf(existing.r||28)+1)%sizes.length];}
+      else slide.points.push({x,y,r:28});
+    }
+    const img2=new Image();img2.onload=()=>drawEditorCanvas(canvas,img2,slide);img2.src=slide.image;
+    renderSidebar();
+  });
+}
+
+function drawEditorCanvas(canvas,img,slide){
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  (slide.points||[]).forEach((p,i)=>{
+    const px=p.x*canvas.width,py=p.y*canvas.height;
+    ctx.beginPath();ctx.arc(px,py,p.r||28,0,Math.PI*2);
+    ctx.fillStyle='rgba(200,0,0,.2)';ctx.fill();
+    ctx.strokeStyle='#c8584a';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#c8584a';ctx.font=`bold ${Math.round((p.r||28)*.55)}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(i+1,px,py);
+  });
+}
+
+/* ── VIEWER (teacher preview + student) ── */
+function renderViewerArea(){
+  if(!quiz.slides.length)return`<div style="display:flex;align-items:center;justify-content:center;height:400px;color:#bbb">No slides</div>`;
+  const slide=quiz.slides[vSlideIdx];
+  const ans=vAnswers[vSlideIdx]||{clicks:[],choice:null,finished:false};
+  const tl=slide.labels?.trueLabel||'Malicious',fl=slide.labels?.falseLabel||'Real';
+  const hotspotCount=(slide.points||[]).length;
+  return `
+<div style="display:flex;flex-direction:column;gap:14px;max-width:860px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <button class="btn ${ans.choice===true&&!ans.finished?'btn-danger':''} ${ans.finished&&ans.choice===true?(slide.is_malicious?'btn-danger':'btn-sage'):''}" id="btn-choice-true" ${ans.finished?'disabled':''}>${tl}</button>
+    <button class="btn ${ans.choice===false&&!ans.finished?'btn-sage':''} ${ans.finished&&ans.choice===false?(!slide.is_malicious?'btn-sage':'btn-danger'):''}" id="btn-choice-false" ${ans.finished?'disabled':''}>${fl}</button>
+    <span style="font-size:.8rem;color:#aaa">Slide ${vSlideIdx+1} / ${quiz.slides.length}</span>
+    ${hotspotCount?`<span style="font-size:.78rem;color:var(--lav);background:var(--lav-lt);padding:3px 10px;border-radius:100px;font-weight:600">🎯 ${hotspotCount} hotspot${hotspotCount>1?'s':''} to find</span>`:''}
+  </div>
+  <canvas id="viewer-canvas" style="max-width:100%;border-radius:10px;cursor:${ans.finished?'default':'crosshair'};box-shadow:0 8px 28px rgba(28,28,46,.12);"></canvas>
+  ${ans.finished?renderScoreForSlide(slide,ans):'<p style="font-size:.8rem;color:#aaa">Click on suspicious areas in the image, choose Malicious or Real, then click Submit.</p>'}
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    ${vSlideIdx>0?`<button class="btn btn-sm" id="v-prev">← Prev</button>`:''}
+    ${!ans.finished?`<button class="btn btn-lav" id="v-submit">✓ Submit Answer</button>`:''}
+    ${ans.finished&&vSlideIdx<quiz.slides.length-1?`<button class="btn btn-gold" id="v-next">Next →</button>`:''}
+    ${ans.finished&&vSlideIdx===quiz.slides.length-1?`<button class="btn btn-primary" id="v-final">🏆 Final Score</button>`:''}
+  </div>
+</div>`;
+}
+
+function renderScoreForSlide(slide,ans){
+  const hotspots=slide.points||[];
+  const correctChoice=ans.choice===slide.is_malicious;
+  let hsHit=0,hsCount=hotspots.length;
+  let wrongClicks=0;
+  const hitSet=new Set();
+  (ans.clicks||[]).forEach(c=>{
+    let bestHs=null,bestD=Infinity;
+    hotspots.forEach((p,pi)=>{const d=Math.hypot((c.x-p.x),(c.y-p.y)*c._ch/(c._cw||1));if(d<bestD){bestD=d;bestHs=pi;}});
+    // Re-check with actual canvas pixel distances
+    let hit=false;
+    hotspots.forEach((p,pi)=>{
+      const cw=c._cw||1,ch=c._ch||1;
+      const dx=(c.x-p.x)*cw,dy=(c.y-p.y)*ch;
+      if(Math.hypot(dx,dy)<=(p.r||28)&&!hitSet.has(pi)){hitSet.add(pi);hit=true;hsHit++;}
+    });
+    if(!hit)wrongClicks++;
+  });
+  const maxScore=1+hsCount;
+  let earned=correctChoice?1:-1;
+  earned+=hsHit; earned-=wrongClicks*0.5;
+  earned=Math.max(0,earned);
+  const pct=maxScore>0?Math.round(earned/maxScore*100):0;
+  return `
+<div class="score-panel">
+  <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:4px">
+    <div class="score-big">${pct}%</div>
+    <div style="color:#aaa;font-size:.85rem;margin-bottom:6px">${earned.toFixed(1)} / ${maxScore} points</div>
+  </div>
+  <div class="score-detail">
+    <div class="score-row ${correctChoice?'good':'bad'}">${correctChoice?'✓':'✗'} Answer: "${ans.choice===true?(slide.labels?.trueLabel||'Malicious'):(slide.labels?.falseLabel||'Real')}" was <strong>${correctChoice?'correct':'wrong'}</strong><span style="margin-left:auto">${correctChoice?'+1':'-1'}pt</span></div>
+    ${hsCount?`<div class="score-row">🎯 Hotspots found: ${hsHit} / ${hsCount}<span style="margin-left:auto">+${hsHit}pt</span></div>`:''}
+    ${wrongClicks?`<div class="score-row bad">❌ Wrong clicks: ${wrongClicks}<span style="margin-left:auto">-${(wrongClicks*0.5).toFixed(1)}pt</span></div>`:''}
+  </div>
+</div>`;
+}
+
+function bindViewer(canvas){
+  if(!quiz.slides.length)return;
+  const slide=quiz.slides[vSlideIdx];if(!slide||!slide.image)return;
+  if(!canvas)canvas=document.getElementById('viewer-canvas');if(!canvas)return;
+
+  const img=new Image();
+  img.onload=()=>{
+    const maxW=Math.min(820,document.querySelector('.main-area')?.clientWidth-48||800);
+    const ratio=Math.min(maxW/img.width,500/img.height,1);
+    canvas.width=Math.round(img.width*ratio);
+    canvas.height=Math.round(img.height*ratio);
+    drawViewerCanvas(canvas,img,slide,vAnswers[vSlideIdx]);
+  };
+  img.src=slide.image;
+
+  const ans=vAnswers[vSlideIdx]||(vAnswers[vSlideIdx]={clicks:[],choice:null,finished:false});
+  document.getElementById('btn-choice-false')?.addEventListener('click',()=>{ans.choice=false;renderMain();});
+  document.getElementById('btn-choice-true')?.addEventListener('click',()=>{ans.choice=true;renderMain();});
+  document.getElementById('v-prev')?.addEventListener('click',()=>{vSlideIdx--;renderMain();});
+  document.getElementById('v-next')?.addEventListener('click',()=>{vSlideIdx++;renderMain();});
+  document.getElementById('v-submit')?.addEventListener('click',()=>{
+    if(ans.choice===null){toast('Choose Malicious or Real first!');return;}
+    // Tag each click with canvas dimensions for scoring
+    ans.clicks.forEach(c=>{c._cw=canvas.width;c._ch=canvas.height;});
+    ans.finished=true;renderMain();
+  });
+  document.getElementById('v-final')?.addEventListener('click',()=>showFinalScore());
+
+  if(!ans.finished){
+    canvas.addEventListener('click',e=>{
+      const rect=canvas.getBoundingClientRect();
+      // FIXED: normalise using rect.width/rect.height (display size), not canvas.width/height
+      const x=(e.clientX-rect.left)/rect.width;
+      const y=(e.clientY-rect.top)/rect.height;
+      const closeIdx=ans.clicks.findIndex(c=>Math.hypot((x-c.x)*canvas.width,(y-c.y)*canvas.height)<20);
+      if(closeIdx>=0)ans.clicks.splice(closeIdx,1);
+      else ans.clicks.push({x,y,_cw:canvas.width,_ch:canvas.height});
+      const img2=new Image();img2.onload=()=>drawViewerCanvas(canvas,img2,slide,ans);img2.src=slide.image;
+    });
+  }
+}
+
+function drawViewerCanvas(canvas,img,slide,ans){
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  (ans.clicks||[]).forEach(c=>{
+    // Convert normalised coords → canvas pixel coords for drawing
+    const px=c.x*canvas.width;
+    const py=c.y*canvas.height;
+    let hit=false;
+    if(ans.finished){
+      (slide.points||[]).forEach(p=>{
+        const dx=(c.x-p.x)*canvas.width,dy=(c.y-p.y)*canvas.height;
+        if(Math.hypot(dx,dy)<=(p.r||28))hit=true;
+      });
+    }
+    ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);
+    ctx.fillStyle=ans.finished?(hit?'rgba(74,124,111,.75)':'rgba(200,88,74,.75)'):'rgba(61,126,181,.65)';
+    ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    if(ans.finished){
+      ctx.font='bold 11px sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(hit?'✓':'✗',px,py);
+    }
+  });
+  if(ans.finished){
+    (slide.points||[]).forEach((p,i)=>{
+      const px=p.x*canvas.width,py=p.y*canvas.height;
+      ctx.beginPath();ctx.arc(px,py,p.r||28,0,Math.PI*2);
+      ctx.fillStyle='rgba(74,124,111,.15)';ctx.fill();
+      ctx.strokeStyle='#4a7c6f';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#4a7c6f';ctx.font=`bold ${Math.round((p.r||28)*.55)}px sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(i+1,px,py);
+    });
+  }
+}
+
+/* ── STUDENT VIEWER ── */
+function renderStudentSlide(){
+  const wrap=document.getElementById('student-viewer');if(!wrap)return;
+  const slide=quiz.slides[vSlideIdx];
+  const ans=vAnswers[vSlideIdx]||{clicks:[],choice:null,finished:false};
+  const tl=slide.labels?.trueLabel||'Malicious',fl=slide.labels?.falseLabel||'Real';
+  const hsCount=(slide.points||[]).length;
+  wrap.innerHTML=`
+<div style="max-width:860px;margin:0 auto">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <h2 style="font-family:'Fraunces',serif;font-size:1.4rem;font-weight:800">${esc(quiz.name)}</h2>
+    <span style="font-size:.82rem;color:#aaa;margin-left:auto">Slide ${vSlideIdx+1} / ${quiz.slides.length}</span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn ${ans.choice===true&&!ans.finished?'btn-danger':''}" id="s-true" ${ans.finished?'disabled':''}>${tl}</button>
+    <button class="btn ${ans.choice===false&&!ans.finished?'btn-sage':''}" id="s-false" ${ans.finished?'disabled':''}>${fl}</button>
+    ${hsCount?`<span style="font-size:.78rem;color:var(--lav);background:var(--lav-lt);padding:3px 10px;border-radius:100px;font-weight:600">🎯 ${hsCount} area${hsCount>1?'s':''} to find</span>`:''}
+  </div>
+  ${!ans.finished?`<p style="font-size:.8rem;color:#aaa;margin-bottom:10px">Click on suspicious areas in the image, choose an answer, then Submit.</p>`:''}
+  <canvas id="s-canvas" style="max-width:100%;border-radius:12px;box-shadow:0 8px 28px rgba(28,28,46,.15);cursor:${ans.finished?'default':'crosshair'};display:block;"></canvas>
+  ${ans.finished?renderScoreForSlide(slide,ans):''}
+  <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+    ${!ans.finished?`<button class="btn btn-lav" id="s-submit">✓ Submit</button>`:''}
+    ${ans.finished&&vSlideIdx<quiz.slides.length-1?`<button class="btn btn-gold" id="s-next">Next →</button>`:''}
+    ${ans.finished&&vSlideIdx===quiz.slides.length-1?`<button class="btn btn-primary" id="s-final">🏆 See Final Score</button>`:''}
+  </div>
+</div>`;
+
+  const canvas=document.getElementById('s-canvas');
+  if(slide.image&&canvas){
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=Math.min(820,wrap.clientWidth-20||800);
+      const ratio=Math.min(maxW/img.width,500/img.height,1);
+      canvas.width=Math.round(img.width*ratio);canvas.height=Math.round(img.height*ratio);
+      drawViewerCanvas(canvas,img,slide,ans);
+      if(!ans.finished){
+        canvas.addEventListener('click',e=>{
+          const rect=canvas.getBoundingClientRect();
+          // FIXED: use normalised 0-1 coords relative to displayed rect, not raw clientX
+          const x=(e.clientX-rect.left)/rect.width;
+          const y=(e.clientY-rect.top)/rect.height;
+          const closeIdx=ans.clicks.findIndex(c=>Math.hypot((x-c.x),(y-c.y))<0.025);
+          if(closeIdx>=0)ans.clicks.splice(closeIdx,1);
+          else ans.clicks.push({x,y,_cw:canvas.width,_ch:canvas.height});
+          const img2=new Image();img2.onload=()=>drawViewerCanvas(canvas,img2,slide,ans);img2.src=slide.image;
+        });
+      }
+    };
+    img.src=slide.image;
+  }
+
+  document.getElementById('s-true')?.addEventListener('click',()=>{ans.choice=true;renderStudentSlide();});
+  document.getElementById('s-false')?.addEventListener('click',()=>{ans.choice=false;renderStudentSlide();});
+  document.getElementById('s-submit')?.addEventListener('click',()=>{
+    if(ans.choice===null){toast('Choose an answer first!');return;}
+    ans.clicks.forEach(c=>{c._cw=document.getElementById('s-canvas')?.width||800;c._ch=document.getElementById('s-canvas')?.height||600;});
+    ans.finished=true;renderStudentSlide();
+  });
+  document.getElementById('s-next')?.addEventListener('click',()=>{vSlideIdx++;renderStudentSlide();});
+  document.getElementById('s-final')?.addEventListener('click',showFinalScore);
+}
+
+function showFinalScore(){
+  let totalEarned=0,totalMax=0;
+  quiz.slides.forEach((slide,i)=>{
+    const ans=vAnswers[i]||{clicks:[],choice:null,finished:false};
+    const hsCount=(slide.points||[]).length;
+    const maxScore=1+hsCount;
+    const correctChoice=ans.choice===slide.is_malicious;
+    const hitSet=new Set();
+    let hsHit=0,wrongClicks=0;
+    (ans.clicks||[]).forEach(c=>{
+      let hit=false;
+      (slide.points||[]).forEach((p,pi)=>{
+        const cw=c._cw||800,ch=c._ch||600;
+        const dx=(c.x-p.x)*cw,dy=(c.y-p.y)*ch;
+        if(Math.hypot(dx,dy)<=(p.r||28)&&!hitSet.has(pi)){hitSet.add(pi);hit=true;hsHit++;}
+      });
+      if(!hit)wrongClicks++;
+    });
+    let earned=correctChoice?1:-1;
+    earned+=hsHit; earned-=wrongClicks*0.5;
+    totalEarned+=Math.max(0,earned);
+    totalMax+=maxScore;
+  });
+  const pct=totalMax>0?Math.round(totalEarned/totalMax*100):0;
+  const emoji=pct>=80?'🏆':pct>=60?'👍':pct>=40?'💪':'📚';
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;inset:0;background:rgba(28,28,46,.6);display:flex;align-items:center;justify-content:center;z-index:9000;padding:20px';
+  d.innerHTML=`<div style="background:#fff;border-radius:24px;padding:44px 40px;max-width:420px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(28,28,46,.2)">
+    <div style="font-size:4rem;margin-bottom:16px">${emoji}</div>
+    <h2 style="font-family:'Fraunces',serif;font-size:1.9rem;font-weight:900;margin-bottom:6px">${studentNick||'Final'} Score</h2>
+    <div style="font-size:3.5rem;font-weight:900;color:var(--gold);margin-bottom:6px">${pct}%</div>
+    <p style="color:#777;font-size:.9rem;margin-bottom:6px">${totalEarned.toFixed(1)} / ${totalMax} points across ${quiz.slides.length} slides</p>
+    <p style="color:#aaa;font-size:.82rem;margin-bottom:28px">${pct>=80?'Excellent work! 🌟':pct>=60?'Good job! Keep practising.':pct>=40?'Not bad — review the slides and try again.':'Keep learning — you\'ll get there!'}</p>
+    <button onclick="this.closest('div[style]').remove()" style="padding:12px 32px;border-radius:100px;background:var(--ink);color:#fff;border:none;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer">Close</button>
+  </div>`;
+  document.body.appendChild(d);
+}
+
+function toast(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2800);}
+</script>
+</body>
+</html>

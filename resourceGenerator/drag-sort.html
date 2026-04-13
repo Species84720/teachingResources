@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Drag & Sort — TeacherKit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;--gold:#e9a825;--gold-dk:#c8891a;--rose:#c8584a;--sky:#3d7eb5;--sage:#4a7c6f;--surface:#fff;--border:rgba(28,28,46,.10);--ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;}
+    body{font-family:var(--fb);background:var(--cream);color:var(--ink);min-height:100vh;}
+    .nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06);}
+    .logo{font-family:var(--ff);font-weight:900;font-size:1.2rem;text-decoration:none;color:var(--ink);}.logo span{color:var(--gold);}
+    .nav-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .16s;background:transparent;color:var(--ink);text-decoration:none;}
+    .btn:hover{border-color:var(--ink);background:var(--warm);}
+    .btn-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}.btn-gold:hover{background:var(--gold-dk);}
+    .btn-ink{background:var(--ink);color:#fff;border-color:var(--ink);}
+    .btn-rose{background:var(--rose);color:#fff;border-color:var(--rose);}
+    .btn-sm{padding:5px 11px;font-size:.74rem;}
+    .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.72rem;overflow:hidden;}
+    .avatar img{width:100%;height:100%;object-fit:cover;}
+    .layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 50px);}
+    .editor-panel{background:var(--surface);border-right:1px solid var(--border);padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+    .ep-title{font-family:var(--ff);font-size:1.05rem;font-weight:800;}
+    .sbox{background:var(--cream);border-radius:12px;padding:14px;border:1px solid var(--border);}
+    .sbox h4{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#aaa;margin-bottom:10px;}
+    .field{margin-bottom:10px;}.field label{display:block;font-weight:600;font-size:.76rem;margin-bottom:4px;color:#555;}
+    .field input,.field textarea{width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:var(--fb);font-size:.83rem;background:var(--surface);color:var(--ink);outline:none;}
+    .field input:focus,.field textarea:focus{border-color:var(--gold);}
+    .field textarea{resize:none;min-height:44px;}
+    .cat-list{display:flex;flex-direction:column;gap:6px;}
+    .cat-row{display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--surface);border-radius:7px;border:1.5px solid var(--border);}
+    .cat-name-inp{flex:1;border:none;background:transparent;font-family:var(--fb);font-weight:600;font-size:.8rem;color:var(--ink);outline:none;}
+    .cat-x{border:none;background:none;cursor:pointer;color:#ccc;font-size:.85rem;}.cat-x:hover{color:var(--rose);}
+    .stmt-list{display:flex;flex-direction:column;gap:7px;}
+    .stmt-row{background:var(--surface);border-radius:8px;padding:8px 10px;border:1.5px solid var(--border);}
+    .stmt-top{display:flex;align-items:flex-start;gap:7px;}
+    .stmt-text{flex:1;border:none;background:transparent;font-family:var(--fb);font-size:.8rem;color:var(--ink);resize:none;outline:none;min-height:36px;}
+    .stmt-x{border:none;background:none;cursor:pointer;color:#ccc;font-size:.82rem;padding:1px 3px;}.stmt-x:hover{color:var(--rose);}
+    .stmt-cat-sel{width:100%;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--fb);font-size:.76rem;background:var(--cream);color:var(--ink);outline:none;margin-top:5px;}
+    .saved-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;}
+    .saved-row{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:var(--warm);cursor:pointer;border:1.5px solid transparent;transition:all .14s;}
+    .saved-row:hover{border-color:var(--gold);background:rgba(233,168,37,.07);}
+    .play-area{padding:24px;overflow-y:auto;}
+    .play-header{margin-bottom:20px;}.play-header h2{font-family:var(--ff);font-size:1.7rem;font-weight:900;}.play-header p{color:#777;font-size:.86rem;margin-top:4px;}
+    .play-body{display:flex;flex-direction:column;gap:22px;}
+    .pool-box{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:14px;}
+    .pool-label{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#aaa;display:block;margin-bottom:10px;}
+    .cards-pool{display:flex;flex-wrap:wrap;gap:10px;min-height:48px;}
+    .stmt-card{padding:12px 16px;border-radius:10px;background:var(--gold);color:var(--ink);font-weight:600;font-size:.86rem;line-height:1.4;cursor:grab;user-select:none;max-width:320px;transition:all .18s;box-shadow:0 2px 8px rgba(28,28,46,.1);border:2px solid transparent;}
+    .stmt-card:active{cursor:grabbing;}
+    .stmt-card.dragging{opacity:.4;}
+    .stmt-card.placed-wrong{background:rgba(200,88,74,.14);border-color:var(--rose);animation:shk .35s ease;}
+    .stmt-card.placed-correct{background:rgba(74,124,111,.14);border-color:var(--sage);cursor:default;pointer-events:none;}
+    .drop-zones{display:grid;gap:14px;}
+    .drop-zone{background:var(--surface);border-radius:12px;border:2px dashed rgba(28,28,46,.14);padding:14px;min-height:90px;transition:all .18s;}
+    .drop-zone.over{border-color:var(--sky);background:rgba(61,126,181,.05);}
+    .dz-header{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+    .dz-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;}
+    .dz-name{font-family:var(--ff);font-weight:700;font-size:.95rem;}
+    .dz-cards{display:flex;flex-wrap:wrap;gap:8px;min-height:34px;}
+    .score-bar{background:var(--surface);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:14px;border:1px solid var(--border);flex-wrap:wrap;}
+    .score-num{font-family:var(--ff);font-size:1.4rem;font-weight:900;color:var(--gold);}
+    /* PRESENT */
+    .present-overlay{position:fixed;inset:0;background:#0d1018;z-index:8000;display:flex;flex-direction:column;color:#fff;}
+    .po-nav{padding:12px 24px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;flex-wrap:wrap;gap:10px;}
+    .po-title{font-family:var(--ff);font-size:1.1rem;font-weight:700;}
+    .po-body{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:18px;}
+    .po-pool{display:flex;flex-wrap:wrap;gap:12px;min-height:56px;background:rgba(255,255,255,.05);border-radius:12px;padding:14px;}
+    .po-card{padding:14px 20px;border-radius:12px;background:var(--gold);color:var(--ink);font-weight:700;font-size:1rem;line-height:1.35;cursor:grab;user-select:none;transition:all .2s;box-shadow:0 3px 10px rgba(0,0,0,.3);border:2px solid transparent;}
+    .po-card:active{cursor:grabbing;}
+    .po-card.dragging{opacity:.4;}
+    .po-card.placed-correct{background:rgba(74,124,111,.3);border-color:#4ae8a0;color:#fff;cursor:default;pointer-events:none;}
+    .po-card.placed-wrong{background:rgba(200,88,74,.3);border-color:#f08080;color:#fff;animation:shk .35s ease;}
+    .po-zones{display:grid;gap:14px;}
+    .po-zone{background:rgba(255,255,255,.07);border-radius:14px;border:2px dashed rgba(255,255,255,.14);padding:16px;min-height:80px;transition:all .18s;}
+    .po-zone.over{border-color:var(--gold);background:rgba(233,168,37,.1);}
+    .po-zone-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+    .po-zone-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+    .po-zone-name{font-family:var(--ff);font-weight:700;font-size:1.1rem;}
+    .po-zone-cards{display:flex;flex-wrap:wrap;gap:10px;min-height:34px;}
+    .po-score-num{font-family:var(--ff);font-size:1.6rem;font-weight:900;color:var(--gold);}
+    .pb-ctrl{padding:8px 18px;border-radius:100px;border:1.5px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-family:'DM Sans',sans-serif;font-weight:600;font-size:.82rem;cursor:pointer;transition:background .15s;}
+    .pb-ctrl:hover{background:rgba(255,255,255,.1);}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 20px;border-radius:100px;font-size:.8rem;font-weight:600;z-index:9999;pointer-events:none;animation:tIn .25s ease;}
+    @keyframes tIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <a class="logo" href="index.html">Teacher<span>Kit</span></a>
+  <span style="color:#bbb;font-size:.75rem">/ Drag & Sort</span>
+  <div class="nav-right" id="nav-right"></div>
+</nav>
+<div class="layout" id="layout">
+  <div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 50px);opacity:.4">Loading…</div>
+</div>
+<script type="module">
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
+
+const fbApp=initializeApp(firebaseConfig),auth=getAuth(fbApp),db=getFirestore(fbApp),COL=COLLECTIONS.dragSort;
+let user=null,saved=[];
+const CAT_COLORS=['#e9a825','#4a7c6f','#c8584a','#3d7eb5','#7563b8','#c87c4a'];
+let A={id:null,name:'',categories:[{id:'c1',name:'Cyberbullying',color:'#3d7eb5'},{id:'c2',name:'Bullying',color:'#c8584a'}],statements:[{id:'s1',text:'A boy hit me very hard in the playground',cat:'c2'},{id:'s2',text:'A child is texting me that he is going to hit me',cat:'c1'},{id:'s3',text:'A boy is calling me names during school hours',cat:'c2'},{id:'s4',text:'A child is all the time texting me and calling me names',cat:'c1'},{id:'s5',text:'Someone took a picture of me and is making fun online',cat:'c1'}]};
+let correct={},score=0;
+
+onAuthStateChanged(auth,async u=>{user=u;if(u){await loadSaved();buildUI();}else buildLoginUI();});
+async function loadSaved(){const q=query(collection(db,COL),where('uid','==',user.uid));const snap=await getDocs(q);saved=snap.docs.map(d=>({id:d.id,...d.data()}));}
+async function saveActivity(){if(!A.name.trim()){toast('Enter an activity name');return;}const id=A.id||(A.id='ds_'+Date.now());try{await setDoc(doc(db,COL,id),{uid:user.uid,...A,updatedAt:serverTimestamp()},{merge:true});await loadSaved();toast('Saved ✓');renderEditor();}catch{toast('Save failed');}}
+async function deleteActivity(id){await deleteDoc(doc(db,COL,id));if(A.id===id)A.id=null;await loadSaved();renderEditor();toast('Deleted');}
+function loadActivity(s){A=JSON.parse(JSON.stringify(s));correct={};score=0;renderEditor();renderPlay();}
+const uid=()=>Math.random().toString(36).slice(2,8);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function buildLoginUI(){document.getElementById('layout').innerHTML=`<div style="display:grid;place-items:center;grid-column:1/-1;height:calc(100vh - 50px)"><div style="background:#fff;border-radius:24px;padding:44px 38px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(28,28,46,.15)"><div style="font-size:3rem;margin-bottom:16px">💬</div><h2 style="font-family:'Fraunces',serif;font-size:1.8rem;font-weight:900;margin-bottom:10px">Drag & <span style="color:#e9a825">Sort</span></h2><p style="color:#777;margin-bottom:24px;font-size:.88rem;line-height:1.6">Build categorisation activities for any topic. Present full-screen to the class. Wrong answers can be moved again.</p><button id="btn-login" style="width:100%;display:flex;align-items:center;justify-content:center;gap:11px;padding:13px;border-radius:12px;border:1.5px solid rgba(28,28,46,.1);background:#fff;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer">${gSVG()} Sign in with Google</button><p style="font-size:.7rem;color:#bbb;margin-top:14px"><a href="index.html" style="color:#aaa">← TeacherKit Hub</a></p></div></div>`;document.getElementById('btn-login')?.addEventListener('click',()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(()=>toast('Login failed')));}
+
+function buildUI(){
+  const u=user,init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  document.getElementById('nav-right').innerHTML=`<div class="avatar">${u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`}</div><button class="btn btn-ink btn-sm" id="btn-present">▶ Present</button><button class="btn btn-sm" id="btn-reset">↩ Reset</button><a class="btn btn-sm" href="index.html">← Hub</a>`;
+  document.getElementById('layout').innerHTML=`<div class="editor-panel" id="editor-panel"></div><div class="play-area" id="play-area"></div>`;
+  document.getElementById('btn-present')?.addEventListener('click',startPresent);
+  document.getElementById('btn-reset')?.addEventListener('click',()=>{correct={};score=0;renderPlay();});
+  renderEditor();renderPlay();
+}
+
+/* ── PRESENT ── */
+function startPresent(){
+  const ov=document.createElement('div');ov.className='present-overlay';
+  buildPresentHTML(ov);document.body.appendChild(ov);
+}
+function buildPresentHTML(ov){
+  const gc=Math.min(A.categories.length,3);
+  const pool=A.statements.filter(s=>!correct[s.id]);
+  ov.innerHTML=`
+<div class="po-nav">
+  <div class="po-title">${esc(A.name||'Drag & Sort')}</div>
+  <div style="display:flex;align-items:center;gap:10px"><span class="po-score-num">${score}</span><span style="opacity:.5;font-size:.9rem">/ ${A.statements.length} correct</span></div>
+  <div style="display:flex;gap:8px"><button class="pb-ctrl" id="po-reset">↩ Reset</button><button class="pb-ctrl" id="po-exit">✕ Exit</button></div>
+</div>
+<div class="po-body">
+  <div>
+    <div style="font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:rgba(255,255,255,.35);margin-bottom:10px">Cards to sort — drag to a category. Wrong answers can be moved again.</div>
+    <div class="po-pool">${pool.length?pool.map(s=>`<div class="po-card" draggable="true" data-sid="${s.id}">${esc(s.text)}</div>`).join(''):`<span style="opacity:.4;font-size:.95rem">🎉 All cards placed correctly!</span>`}</div>
+  </div>
+  <div class="po-zones" style="grid-template-columns:repeat(${gc},1fr)">
+    ${A.categories.map(cat=>{const placed=A.statements.filter(s=>correct[s.id]&&s.cat===cat.id);return `<div class="po-zone" data-zone="${cat.id}"><div class="po-zone-header"><div class="po-zone-dot" style="background:${cat.color}"></div><div class="po-zone-name">${esc(cat.name)}</div><span style="margin-left:auto;font-size:.75rem;opacity:.45">${placed.length}</span></div><div class="po-zone-cards">${placed.map(s=>`<div class="po-card placed-correct">${esc(s.text)}</div>`).join('')}</div></div>`;}).join('')}
+  </div>
+</div>`;
+  ov.querySelector('#po-exit')?.addEventListener('click',()=>ov.remove());
+  ov.querySelector('#po-reset')?.addEventListener('click',()=>{correct={};score=0;buildPresentHTML(ov);});
+  bindPDrag(ov);
+}
+function bindPDrag(ov){
+  let dr=null,clone=null;
+  ov.querySelectorAll('.po-card:not(.placed-correct)').forEach(c=>{
+    c.addEventListener('dragstart',()=>{dr=c.dataset.sid;c.classList.add('dragging');});
+    c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+    c.addEventListener('touchstart',()=>dr=c.dataset.sid,{passive:true});
+    c.addEventListener('touchmove',e=>{if(!dr)return;if(!clone){clone=c.cloneNode(true);clone.style.cssText='position:fixed;opacity:.65;pointer-events:none;z-index:9999;border-radius:12px;padding:12px 18px;background:#e9a825;font-weight:700;';document.body.appendChild(clone);}clone.style.left=(e.touches[0].clientX-80)+'px';clone.style.top=(e.touches[0].clientY-28)+'px';},{passive:true});
+    c.addEventListener('touchend',e=>{clone?.remove();clone=null;if(!dr)return;const el=document.elementFromPoint(e.changedTouches[0].clientX,e.changedTouches[0].clientY);const z=el?.closest('[data-zone]');if(z)doDrop(dr,z.dataset.zone,ov);dr=null;});
+  });
+  ov.querySelectorAll('[data-zone]').forEach(z=>{
+    z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over');});
+    z.addEventListener('dragleave',()=>z.classList.remove('over'));
+    z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('over');if(dr){doDrop(dr,z.dataset.zone,ov);dr=null;}});
+  });
+}
+function doDrop(sid,catId,ov){
+  const stmt=A.statements.find(s=>s.id===sid);if(!stmt)return;
+  if(stmt.cat===catId){if(!correct[sid]){score++;correct[sid]=true;}buildPresentHTML(ov);}
+  else{toast('Not quite — try another category!');const c=ov.querySelector(`[data-sid="${sid}"]`);if(c){c.classList.add('placed-wrong');setTimeout(()=>c.classList.remove('placed-wrong'),700);}}
+}
+
+/* ── EDITOR ── */
+function renderEditor(){
+  const ep=document.getElementById('editor-panel');if(!ep)return;
+  ep.innerHTML=`
+<div class="ep-title">💬 Activity Editor</div>
+<div class="sbox"><h4>Name</h4>
+  <div class="field"><input id="act-name" value="${esc(A.name)}" placeholder="e.g. Bullying vs Cyberbullying"/></div>
+  <div style="display:flex;gap:6px"><button class="btn btn-gold btn-sm" id="btn-save-act" style="flex:1">💾 Save</button><button class="btn btn-sm" id="btn-new-act">+ New</button></div>
+</div>
+<div class="sbox"><h4>Categories (${A.categories.length})</h4>
+  <div class="cat-list">${A.categories.map((c,i)=>`<div class="cat-row"><input type="color" value="${c.color}" data-cat-color="${i}" style="width:26px;height:22px;border:none;border-radius:4px;padding:0;cursor:pointer"/><input class="cat-name-inp" value="${esc(c.name)}" data-cat-name="${i}"/><button class="cat-x" data-del-cat="${i}">✕</button></div>`).join('')}</div>
+  <button class="btn btn-sm" id="add-cat" style="margin-top:8px;width:100%">+ Category</button>
+</div>
+<div class="sbox"><h4>Statements (${A.statements.length})</h4>
+  <div class="stmt-list">${A.statements.map((s,i)=>`<div class="stmt-row"><div class="stmt-top"><textarea class="stmt-text" data-stmt-text="${i}" rows="2">${esc(s.text)}</textarea><button class="stmt-x" data-del-stmt="${i}">✕</button></div><select class="stmt-cat-sel" data-stmt-cat="${i}">${A.categories.map(c=>`<option value="${c.id}" ${s.cat===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>`).join('')}</div>
+  <button class="btn btn-sm" id="add-stmt" style="margin-top:8px;width:100%">+ Statement</button>
+</div>
+<div class="sbox"><h4>Saved (${saved.length})</h4>
+  <div class="saved-list">${saved.length?saved.map(s=>`<div class="saved-row" data-load-act="${s.id}"><div style="flex:1"><div style="font-size:.8rem;font-weight:600">${esc(s.name)}</div><div style="font-size:.68rem;color:#aaa">${s.categories?.length||0} cats · ${s.statements?.length||0} stmts</div></div><button class="btn btn-rose btn-sm" data-del-act="${s.id}">🗑</button></div>`).join(''):`<p style="color:#bbb;font-size:.76rem;text-align:center;padding:8px">None saved yet</p>`}</div>
+</div>`;
+  document.getElementById('act-name')?.addEventListener('input',e=>A.name=e.target.value);
+  document.getElementById('btn-save-act')?.addEventListener('click',saveActivity);
+  document.getElementById('btn-new-act')?.addEventListener('click',()=>{A={id:null,name:'',categories:[{id:uid(),name:'Category A',color:'#3d7eb5'},{id:uid(),name:'Category B',color:'#c8584a'}],statements:[]};correct={};score=0;renderEditor();renderPlay();});
+  document.querySelectorAll('[data-cat-color]').forEach(inp=>inp.addEventListener('input',e=>{A.categories[+inp.dataset.catColor].color=e.target.value;renderPlay();}));
+  document.querySelectorAll('[data-cat-name]').forEach(inp=>inp.addEventListener('input',e=>{A.categories[+inp.dataset.catName].name=e.target.value;renderPlay();}));
+  document.querySelectorAll('[data-del-cat]').forEach(btn=>btn.addEventListener('click',()=>{A.categories.splice(+btn.dataset.delCat,1);renderEditor();renderPlay();}));
+  document.getElementById('add-cat')?.addEventListener('click',()=>{A.categories.push({id:uid(),name:'New Category',color:CAT_COLORS[A.categories.length%CAT_COLORS.length]});renderEditor();renderPlay();});
+  document.querySelectorAll('[data-stmt-text]').forEach(ta=>ta.addEventListener('input',e=>{A.statements[+ta.dataset.stmtText].text=e.target.value;}));
+  document.querySelectorAll('[data-stmt-cat]').forEach(sel=>sel.addEventListener('change',e=>{A.statements[+sel.dataset.stmtCat].cat=e.target.value;}));
+  document.querySelectorAll('[data-del-stmt]').forEach(btn=>btn.addEventListener('click',()=>{A.statements.splice(+btn.dataset.delStmt,1);renderEditor();renderPlay();}));
+  document.getElementById('add-stmt')?.addEventListener('click',()=>{A.statements.push({id:uid(),text:'New statement',cat:A.categories[0]?.id||''});renderEditor();renderPlay();});
+  document.querySelectorAll('[data-load-act]').forEach(row=>row.addEventListener('click',e=>{if(e.target.dataset.delAct)return;const s=saved.find(x=>x.id===row.dataset.loadAct);if(s)loadActivity(s);}));
+  document.querySelectorAll('[data-del-act]').forEach(btn=>btn.addEventListener('click',async e=>{e.stopPropagation();await deleteActivity(btn.dataset.delAct);}));
+}
+
+function renderPlay(){
+  const pa=document.getElementById('play-area');if(!pa)return;
+  const gc=Math.min(A.categories.length,3);
+  const pool=A.statements.filter(s=>!correct[s.id]);
+  pa.innerHTML=`
+<div class="play-header"><h2>${esc(A.name||'Drag & Sort')}</h2><p>Drag each card to the correct category. Wrong answers return to the pool and can be moved again.</p></div>
+<div class="play-body">
+  <div class="score-bar"><span class="score-num">${score}</span><span style="font-size:.82rem;color:#777">/ ${A.statements.length} correct${score===A.statements.length?' 🎉 All done!':''}</span></div>
+  <div class="pool-box"><span class="pool-label">Cards to sort</span><div class="cards-pool">${pool.map(s=>`<div class="stmt-card" draggable="true" data-sid="${s.id}">${esc(s.text)}</div>`).join('')||`<span style="color:#bbb;font-size:.82rem">All placed correctly ✓</span>`}</div></div>
+  <div class="drop-zones" style="grid-template-columns:repeat(${gc},1fr)">
+    ${A.categories.map(cat=>{const placed=A.statements.filter(s=>correct[s.id]&&s.cat===cat.id);return `<div class="drop-zone" data-zone="${cat.id}"><div class="dz-header"><div class="dz-dot" style="background:${cat.color}"></div><div class="dz-name">${esc(cat.name)}</div><span style="margin-left:auto;font-size:.72rem;color:#aaa">${placed.length}</span></div><div class="dz-cards">${placed.map(s=>`<div class="stmt-card placed-correct">${esc(s.text)}</div>`).join('')}</div></div>`;}).join('')}
+  </div>
+</div>`;
+  let dr=null;
+  pa.querySelectorAll('.stmt-card').forEach(c=>{c.addEventListener('dragstart',()=>dr=c.dataset.sid);c.addEventListener('dragend',()=>dr=null);});
+  pa.querySelectorAll('[data-zone]').forEach(z=>{
+    z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over');});
+    z.addEventListener('dragleave',()=>z.classList.remove('over'));
+    z.addEventListener('drop',e=>{e.preventDefault();z.classList.remove('over');if(!dr)return;const stmt=A.statements.find(s=>s.id===dr);if(!stmt)return;if(stmt.cat===z.dataset.zone){if(!correct[dr]){score++;correct[dr]=true;}}else toast('Not quite!');dr=null;renderPlay();});
+  });
+}
+
+function gSVG(){return `<svg width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`;}
+function toast(msg){document.querySelectorAll('.toast').forEach(t=>t.remove());const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
+</script>
+</body>
+</html>
