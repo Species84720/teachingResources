@@ -6,9 +6,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{--ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;--gold:#e9a825;--gold-dk:#c8891a;--rose:#c8584a;--sage:#4a7c6f;--surface:#fff;--border:rgba(28,28,46,.10);--ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;}
+    :root{--ink:#1c1c2e;--cream:#faf8f3;--warm:#f2ede4;--gold:#e9a825;--gold-dk:#c8891a;--rose:#c8584a;--sage:#4a7c6f;--surface:#fff;--border:rgba(28,28,46,.10);--ff:'Fraunces',serif;--fb:'DM Sans',sans-serif;--nav-height:56px;--label-size:48px;--label-panel-width:clamp(220px,24vw,320px);}
     body{font-family:var(--fb);background:var(--cream);color:var(--ink);min-height:100vh;}
-    .nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06);}
+    .nav{position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:12px;padding:12px 22px;height:var(--nav-height);background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 2px 8px rgba(28,28,46,.06);}
     .logo{font-family:var(--ff);font-weight:900;font-size:1.2rem;text-decoration:none;color:var(--ink);}.logo span{color:var(--gold);}
     .nav-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
     .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:100px;border:1.5px solid var(--border);font-family:var(--fb);font-weight:600;font-size:.8rem;cursor:pointer;transition:all .16s;background:transparent;color:var(--ink);text-decoration:none;}
@@ -24,7 +24,7 @@
     .avatar img{width:100%;height:100%;object-fit:cover;}
 
     /* Layout */
-    .layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 50px);}
+    .layout{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:calc(100dvh - var(--nav-height));}
     .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
     .sb-title{font-family:var(--ff);font-weight:800;font-size:1rem;}
     .sbox{background:var(--cream);border-radius:12px;padding:13px;border:1px solid var(--border);}
@@ -43,9 +43,9 @@
     .mode-tab{padding:6px 16px;border-radius:100px;border:1.5px solid var(--border);font-weight:600;font-size:.78rem;cursor:pointer;transition:all .14s;}
     .mode-tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
     /* Canvas area */
-    .canvas-area{display:flex;flex-direction:column;overflow:hidden;}
-    .canvas-body{flex:1;overflow:hidden;position:relative;background:#111;display:flex;align-items:center;justify-content:center;min-height:400px;}
-    canvas{display:block;}
+    .canvas-area{display:flex;flex-direction:column;overflow:hidden;min-width:0;position:sticky;top:var(--nav-height);align-self:start;height:calc(100dvh - var(--nav-height));}
+    .canvas-body{flex:1;min-height:0;overflow:hidden;position:relative;background:#111;display:flex;align-items:center;justify-content:flex-start;}
+    canvas{display:block;flex-shrink:0;}
     /* Dropzones */
     .dropzone{
       position:absolute;
@@ -68,17 +68,25 @@
       pointer-events:none;
     }
     .dropzone.filled::before{display:none;}
-    .dropzone.filled{border-color:rgba(74,124,111,.8);background:rgba(74,124,111,.15);}
+    .dropzone.filled{border-color:rgba(74,124,111,.8);background:#fff;color:#000;font-size:var(--label-size);font-weight:700;line-height:1.15;padding:4px 8px;text-align:center;overflow-wrap:anywhere;}
     .dropzone.wrong{border-color:rgba(200,88,74,.8);animation:shk .35s ease;}
     /* Placed labels */
-    .placed-label{position:absolute;background:#fff;color:#000;padding:3px 8px;border-radius:5px;font-weight:700;font-size:.85rem;border:1px solid #333;z-index:6;cursor:default;}
+    .placed-label{position:absolute;background:#fff;color:#000;padding:4px 8px;border-radius:5px;font-weight:700;font-size:var(--label-size);border:1px solid #333;z-index:6;cursor:default;}
     /* Label sidebar */
-    .label-sidebar{position:absolute;right:0;top:0;bottom:0;width:0;background:#1a1a2e;overflow-y:auto;overflow-x:hidden;transition:width .3s;z-index:10;padding:10px 0;}
-    .label-sidebar.open{width:160px;padding:10px;}
-    .label-item{background:rgba(255,255,255,.12);color:#fff;margin-bottom:8px;padding:10px 12px;border-radius:8px;cursor:grab;font-size:.85rem;font-weight:600;user-select:none;}
+    .label-sidebar{position:absolute;right:0;top:0;bottom:0;width:var(--label-panel-width);display:none;background:#1a1a2e;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;z-index:10;padding:10px;font-size:var(--label-size);}
+    .label-sidebar.open{display:block;}
+    .label-item{background:rgba(255,255,255,.12);color:#fff;margin-bottom:8px;padding:5px 10px;border-radius:8px;cursor:grab;font-size:inherit;font-weight:600;line-height:1.2;overflow-wrap:anywhere;user-select:none;}
     .label-item:active{cursor:grabbing;}
     /* Controls overlay */
-    .ctrl-overlay{position:absolute;top:10px;left:10px;z-index:20;display:flex;flex-direction:column;gap:6px;}
+    .ctrl-overlay{position:absolute;top:10px;left:10px;z-index:20;display:flex;flex-direction:column;gap:6px;max-width:calc(100% - var(--label-panel-width) - 20px);}
+    .torch-ctrl{flex-wrap:wrap;}
+    @media(max-width:700px){
+      :root{--label-size:32px;--label-panel-width:clamp(140px,30vw,220px);}
+      .layout{grid-template-columns:minmax(0,1fr);}
+      .canvas-area{grid-row:1;position:relative;top:auto;}
+      .sidebar{grid-row:2;}
+      .nav{padding-inline:12px;gap:6px;}
+    }
     /* Torch radius slider */
     .torch-ctrl{background:rgba(0,0,0,.6);border-radius:10px;padding:8px 12px;color:#fff;font-size:.75rem;display:flex;align-items:center;gap:8px;}
     .torch-ctrl input{accent-color:var(--gold);}
@@ -404,6 +412,7 @@ function runEditor(){
   const canvas=document.getElementById('main-canvas');
   const body=document.getElementById('canvas-body');
   const ctx=canvas.getContext('2d');
+  document.getElementById('label-sidebar').className='label-sidebar open';
   scaleToFit();
 
   // Draw image fully visible
@@ -419,25 +428,20 @@ function runEditor(){
       // Then the gold dashed line on top
       ctx.strokeStyle='rgba(233,168,37,.95)';ctx.lineWidth=2;ctx.setLineDash([6,3]);
       ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);
-      ctx.fillStyle='rgba(233,168,37,.2)';ctx.fillRect(px,py,pw,ph);
-      // Label with dark shadow for readability
-      ctx.fillStyle='rgba(0,0,0,.6)';ctx.font='bold 12px DM Sans,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText(z.text,px+pw/2+1,py+ph/2+1);
-      ctx.fillStyle='#fff';
-      ctx.fillText(z.text,px+pw/2,py+ph/2);
+      ctx.fillStyle='#fff';ctx.fillRect(px+2,py+2,pw-4,ph-4);
+      ctx.fillStyle='#000';ctx.font=`bold ${labelFontSize()}px DM Sans,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(z.text,px+pw/2,py+ph/2,Math.max(1,pw-16));
     });
   }
   draw();
 
   // Right sidebar with draggable labels
   const ls=document.getElementById('label-sidebar');
-  ls.className='label-sidebar open';
-  ls.innerHTML=`<div style="color:rgba(255,255,255,.6);font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Drag to canvas</div>`+
-    T.labels.filter(l=>!T.zones.find(z=>z.text===l.text)).map(l=>`<div class="label-item" draggable="true" data-lbl="${esc(l.text)}">${esc(l.text)}</div>`).join('');
+  renderEditorLabels(ls);
 
   // Controls
   document.getElementById('ctrl-overlay').innerHTML=`
-<div style="color:rgba(255,255,255,.7);font-size:.75rem;background:rgba(0,0,0,.55);border-radius:8px;padding:7px 11px;">
+<div style="color:rgba(255,255,255,.7);font-size:.75rem;background:rgba(0,0,0,.55);border-radius:8px;padding:7px 11px;pointer-events:none;">
   Editor mode — drag labels from right panel onto image to set drop-zone positions.<br/>
   <span style="opacity:.7">Zones can be repositioned by dragging once placed.</span>
 </div>`;
@@ -446,7 +450,7 @@ function runEditor(){
   listenMode(canvas,'dragover',e=>e.preventDefault());
   listenMode(canvas,'drop',e=>{
     e.preventDefault();
-    const lbl=e.dataTransfer.getData('text/plain');if(!lbl)return;
+    const lbl=e.dataTransfer.getData('text/plain');if(!T.labels.some(l=>l.text===lbl))return;
     const rect=canvas.getBoundingClientRect();
     const cx=(e.clientX-rect.left)*(canvas.width/rect.width);
     const cy=(e.clientY-rect.top)*(canvas.height/rect.height);
@@ -455,10 +459,7 @@ function runEditor(){
     // Remove existing zone for this label (replace it)
     T.zones=T.zones.filter(z=>z.text!==lbl);
     T.zones.push({text:lbl,x:px,y:py,w:14,h:8});
-    renderSidebar();draw();
-  });
-  ls.querySelectorAll('[data-lbl]').forEach(item=>{
-    item.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',item.dataset.lbl));
+    renderSidebar();renderEditorLabels(ls);draw();
   });
 
   // Zone drag on canvas (to reposition)
@@ -485,11 +486,24 @@ function runEditor(){
   listenMode(window,'mouseup',()=>{if(editDragZone!==null){editDragZone=null;renderSidebar();}});
 }
 
+function renderEditorLabels(ls){
+  const scrollTop=ls.scrollTop;
+  const remaining=T.labels.filter(l=>!T.zones.some(z=>z.text===l.text));
+  ls.innerHTML=`<div style="color:rgba(255,255,255,.6);font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Drag to canvas</div>`+
+    (remaining.length?remaining.map(l=>`<div class="label-item" draggable="true" data-lbl="${esc(l.text)}">${esc(l.text)}</div>`).join(''):
+    '<p style="color:rgba(255,255,255,.7);font-size:1rem">All labels placed</p>');
+  ls.querySelectorAll('[data-lbl]').forEach(item=>{
+    item.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',item.dataset.lbl));
+  });
+  ls.scrollTop=scrollTop;
+}
+
 /* ── VIEW MODE (torch) ── */
 function runView(){
   const canvas=document.getElementById('main-canvas');
   const body=document.getElementById('canvas-body');
   const ctx=canvas.getContext('2d');
+  document.getElementById('label-sidebar').className='label-sidebar open';
   scaleToFit();
 
   // Build label sidebar (draggable labels)
@@ -554,10 +568,12 @@ function runView(){
 }
 
 function renderViewLabels(ls){
+  const scrollTop=ls.scrollTop;
   const unplaced=T.labels.filter(l=>!T.zones.find(z=>z.text===l.text&&viewPlaced[z.text]));
   ls.innerHTML=`<div style="color:rgba(255,255,255,.5);font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Labels</div>`+
     (unplaced.length?unplaced.map(l=>`<div class="label-item" draggable="true" data-lbl="${esc(l.text)}">${esc(l.text)}</div>`).join(''):`<div style="color:rgba(255,255,255,.5);font-size:.82rem">All placed! 🎉</div>`);
   ls.querySelectorAll('[data-lbl]').forEach(item=>{item.addEventListener('dragstart',e=>e.dataTransfer.setData('text/plain',item.dataset.lbl));});
+  ls.scrollTop=scrollTop;
   // Touch drag
   ls.querySelectorAll('[data-lbl]').forEach(item=>{
     let clone=null;
@@ -593,7 +609,8 @@ function checkAllDone(){
 function scaleToFit(){
   const canvas=document.getElementById('main-canvas');
   const body=document.getElementById('canvas-body');
-  const bw=body.clientWidth||800, bh=body.clientHeight||550;
+  const panel=document.getElementById('label-sidebar');
+  const bw=Math.max(1,(body.clientWidth||800)-(panel?.classList.contains('open')?panel.offsetWidth:0)), bh=body.clientHeight||550;
   if(!imgEl){canvas.width=bw;canvas.height=bh;return;}
   canvas.width=bw;canvas.height=bh;canvW=bw;canvH=bh;
   const r=Math.min(bw/imgEl.width,bh/imgEl.height,1);
@@ -601,8 +618,14 @@ function scaleToFit(){
   imgOX=Math.round((bw-imgW)/2);imgOY=Math.round((bh-imgH)/2);
 }
 function zoneToPixels(z){
-  return{px:imgOX+z.x/100*imgW, py:imgOY+z.y/100*imgH, pw:z.w/100*imgW, ph:z.h/100*imgH};
+  const ctx=document.getElementById('main-canvas').getContext('2d');
+  const fontSize=labelFontSize();ctx.font=`bold ${fontSize}px DM Sans,sans-serif`;
+  const pw=Math.min(imgW,Math.max(z.w/100*imgW,ctx.measureText(z.text).width+20));
+  const ph=Math.min(imgH,Math.max(z.h/100*imgH,fontSize*1.2+12));
+  return{px:Math.max(imgOX,Math.min(imgOX+z.x/100*imgW,imgOX+imgW-pw)),
+    py:Math.max(imgOY,Math.min(imgOY+z.y/100*imgH,imgOY+imgH-ph)),pw,ph};
 }
+function labelFontSize(){return parseFloat(getComputedStyle(document.getElementById('label-sidebar')).fontSize)||48;}
 
 window.addEventListener('resize',()=>{ scaleToFit(); enterMode(mode); });
 
