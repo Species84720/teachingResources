@@ -27,8 +27,12 @@ public collection listing or writes. Unshared templates remain protected by the
 existing owner rules. Sharing exposes the image, labels, zones, and stored
 template metadata (including the owner's UID) to anyone with the link.
 
-Firestore's existing document size limit still applies to uploaded images.
-Failed saves do not produce a share link.
+Large uploads are automatically resized and compressed to fit the image budget.
+Oversized images already in the editor are also compressed when saving. Smaller
+images are preserved; compressed images use JPEG with a white background and
+keep their aspect ratio and zone positions. A size check leaves headroom below
+Firestore's document limit. Failed saves do not produce a share link. Save errors
+remain visible below Save Template and the original error is logged in the console.
 
 ## Deployment smoke check
 
