@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bingo Sheet Generator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d7dce5;
+      --panel: #ffffff;
+      --page-bg: #eef1f6;
+      --accent: #5b45d8;
+      --accent-dark: #4432b5;
+      --accent-soft: #eeeafd;
+      --danger: #b42318;
+      --radius: 16px;
+      --shadow: 0 12px 32px rgba(23, 32, 51, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--page-bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      line-height: 1.1;
+    }
+
+    .hero p {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .button {
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-weight: 700;
+      transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .button:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+      outline: 3px solid rgba(91, 69, 216, 0.25);
+      outline-offset: 2px;
+    }
+
+    .button-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .button-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .button-secondary {
+      border-color: var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .button-secondary:hover {
+      border-color: #b6becb;
+      background: #f8f9fb;
+    }
+
+    .button-danger {
+      border-color: #f3c7c3;
+      background: #fff7f6;
+      color: var(--danger);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .controls {
+      position: sticky;
+      top: 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: 0 4px 16px rgba(23, 32, 51, 0.05);
+      padding: 18px;
+    }
+
+    .panel h2 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .panel-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .upload-zone {
+      display: grid;
+      place-items: center;
+      min-height: 128px;
+      border: 2px dashed #b7bfd0;
+      border-radius: 14px;
+      background: #fafbfc;
+      padding: 18px;
+      text-align: center;
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+
+    .upload-zone.is-dragging {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .upload-zone strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .upload-zone small {
+      color: var(--muted);
+    }
+
+    .upload-zone input {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .upload-zone label {
+      cursor: pointer;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field-grid .field-wide {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 11px;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 14px;
+      font-size: 0.9rem;
+    }
+
+    .check-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .status {
+      min-height: 22px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .status.is-error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .library-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .count-badge {
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      padding: 4px 9px;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .library-list {
+      display: grid;
+      gap: 9px;
+      max-height: 350px;
+      overflow: auto;
+      padding-right: 3px;
+    }
+
+    .library-empty {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.88rem;
+    }
+
+    .library-item {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+    }
+
+    .library-thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: 9px;
+      background: #f1f3f7;
+      object-fit: contain;
+    }
+
+    .library-item input {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 9px;
+    }
+
+    .icon-button {
+      width: 36px;
+      height: 36px;
+      border: 1px solid #f3c7c3;
+      border-radius: 9px;
+      background: #fff7f6;
+      color: var(--danger);
+      font-weight: 900;
+    }
+
+    .preview-column {
+      min-width: 0;
+    }
+
+    .preview-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .preview-heading h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .preview-heading span {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    #printArea {
+      display: grid;
+      gap: 22px;
+    }
+
+    .empty-preview {
+      display: grid;
+      place-items: center;
+      min-height: 420px;
+      border: 2px dashed #c5cad5;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.58);
+      color: var(--muted);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .print-page {
+      display: grid;
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      width: 100%;
+      aspect-ratio: 210 / 297;
+      border: 1px solid #d1d6df;
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      overflow: hidden;
+    }
+
+    .bingo-card {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      border: 2px solid #202838;
+      border-radius: 12px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 38px;
+      border-bottom: 2px solid #202838;
+      padding: 7px 12px;
+      background: #f6f5ff;
+    }
+
+    .card-heading strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: clamp(0.85rem, 2vw, 1.15rem);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .card-number {
+      flex: none;
+      color: #555f72;
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .card-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+    }
+
+    .bingo-cell {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      place-items: stretch;
+      border-right: 1.5px solid #202838;
+      border-bottom: 1.5px solid #202838;
+      padding: 6px;
+      overflow: hidden;
+    }
+
+    .bingo-cell:nth-child(var(--cols-n)) {
+      border-right: 0;
+    }
+
+    .cell-image-wrap {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .cell-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .cell-label {
+      min-height: 1.35em;
+      padding-top: 4px;
+      overflow: hidden;
+      color: #111827;
+      font-size: clamp(0.58rem, 1.6vw, 0.92rem);
+      font-weight: 800;
+      line-height: 1.15;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .hide-labels .bingo-cell {
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    .hide-labels .cell-label {
+      display: none;
+    }
+
+    @media (max-width: 860px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      .hero {
+        display: grid;
+      }
+
+      .print-page {
+        padding: 8px;
+        gap: 8px;
+      }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
+
+    @media print {
+      html,
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+      }
+
+      body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .app-shell {
+        width: auto;
+        margin: 0;
+        padding: 0;
+      }
+
+      .workspace,
+      .preview-column,
+      #printArea {
+        display: block;
+      }
+
+      .print-page {
+        width: 194mm;
+        height: 281mm;
+        aspect-ratio: auto;
+        display: grid;
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 6mm;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+        overflow: hidden;
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .print-page:last-child {
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      .bingo-card {
+        height: 137.5mm;
+        border-radius: 3mm;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .card-heading {
+        min-height: 10mm;
+        padding: 1.5mm 3mm;
+      }
+
+      .card-heading strong {
+        font-size: 13pt;
+      }
+
+      .card-number {
+        font-size: 8pt;
+      }
+
+      .bingo-cell {
+        padding: 1.7mm;
+      }
+
+      .cell-label {
+        font-size: 9pt;
+        padding-top: 1mm;
+      }
+
+      .empty-preview {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero no-print">
+      <div>
+        <h1>Bingo Sheet Generator</h1>
+        <p>Upload your own pictures, adjust their labels, generate randomized cards, and print two equal-sized bingo sheets on every A4 page.</p>
+      </div>
+      <div class="toolbar">
+        <button class="button button-secondary" id="generateButton" type="button">Generate sheets</button>
+        <button class="button button-primary" id="printButton" type="button">Print</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="controls no-print" aria-label="Bingo generator controls">
+        <section class="panel">
+          <h2>1. Upload pictures</h2>
+          <p class="panel-copy">Select several JPG, PNG, GIF, WebP, SVG, or AVIF files. Each filename becomes its starting label.</p>
+
+          <div class="upload-zone" id="uploadZone">
+            <label for="fileInput">
+              <strong>Choose pictures or drop them here</strong>
+              <small>You can upload more files later.</small>
+            </label>
+            <input id="fileInput" type="file" accept="image/*" multiple>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>2. Sheet settings</h2>
+          <p class="panel-copy">Every card uses unique pictures from your uploaded pool.</p>
+
+          <div class="field-grid">
+            <div class="field field-wide">
+              <label for="titleInput">Card title</label>
+              <input id="titleInput" type="text" value="Bingo" maxlength="60">
+            </div>
+
+            <div class="field">
+              <label for="rowsInput">Rows</label>
+              <select id="rowsInput">
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="columnsInput">Columns</label>
+              <select id="columnsInput">
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+
+            <div class="field field-wide">
+              <label for="cardCountInput">Number of bingo sheets</label>
+              <input id="cardCountInput" type="number" min="1" max="100" value="24" inputmode="numeric">
+            </div>
+          </div>
+
+          <label class="check-row" for="showLabelsInput">
+            <input id="showLabelsInput" type="checkbox" checked>
+            Show labels under pictures
+          </label>
+
+          <p class="status" id="statusMessage" aria-live="polite">Upload at least 6 pictures for the current 2 × 3 layout.</p>
+        </section>
+
+        <section class="panel">
+          <div class="library-header">
+            <div>
+              <h2>3. Picture labels</h2>
+            </div>
+            <span class="count-badge" id="itemCount">0 items</span>
+          </div>
+          <p class="panel-copy">Edit any label before generating the sheets.</p>
+          <div class="library-list" id="libraryList"></div>
+          <button class="button button-danger" id="clearButton" type="button" style="width: 100%; margin-top: 12px;">Clear all pictures</button>
+        </section>
+      </aside>
+
+      <section class="preview-column" aria-label="Bingo sheet preview">
+        <div class="preview-heading no-print">
+          <h2>Print preview</h2>
+          <span>Two sheets per A4 page</span>
+        </div>
+        <div id="printArea">
+          <div class="empty-preview">Your generated bingo sheets will appear here.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+
+    const state = {
+      items: [],
+      nextId: 1
+    };
+
+    const fileInput = document.getElementById("fileInput");
+    const uploadZone = document.getElementById("uploadZone");
+    const libraryList = document.getElementById("libraryList");
+    const itemCount = document.getElementById("itemCount");
+    const statusMessage = document.getElementById("statusMessage");
+    const printArea = document.getElementById("printArea");
+    const generateButton = document.getElementById("generateButton");
+    const printButton = document.getElementById("printButton");
+    const clearButton = document.getElementById("clearButton");
+    const titleInput = document.getElementById("titleInput");
+    const rowsInput = document.getElementById("rowsInput");
+    const columnsInput = document.getElementById("columnsInput");
+    const cardCountInput = document.getElementById("cardCountInput");
+    const showLabelsInput = document.getElementById("showLabelsInput");
+
+    function filenameToLabel(filename) {
+      return filename
+        .replace(/\.[^/.]+$/, "")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function currentCellCount() {
+      return Number(rowsInput.value) * Number(columnsInput.value);
+    }
+
+    function setStatus(message, isError = false) {
+      statusMessage.textContent = message;
+      statusMessage.classList.toggle("is-error", isError);
+    }
+
+    function addFiles(fileList) {
+      const imageFiles = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
+
+      if (imageFiles.length === 0) {
+        setStatus("No supported image files were selected.", true);
+        return;
+      }
+
+      imageFiles.forEach((file) => {
+        state.items.push({
+          id: state.nextId++,
+          file,
+          url: URL.createObjectURL(file),
+          label: filenameToLabel(file.name) || `Picture ${state.nextId - 1}`
+        });
+      });
+
+      fileInput.value = "";
+      renderLibrary();
+      updateRequirementMessage();
+    }
+
+    function removeItem(id) {
+      const itemIndex = state.items.findIndex((item) => item.id === id);
+      if (itemIndex === -1) return;
+
+      URL.revokeObjectURL(state.items[itemIndex].url);
+      state.items.splice(itemIndex, 1);
+      renderLibrary();
+      updateRequirementMessage();
+    }
+
+    function clearAllItems() {
+      state.items.forEach((item) => URL.revokeObjectURL(item.url));
+      state.items = [];
+      renderLibrary();
+      updateRequirementMessage();
+      printArea.innerHTML = '<div class="empty-preview">Your generated bingo sheets will appear here.</div>';
+    }
+
+    function renderLibrary() {
+      libraryList.replaceChildren();
+      itemCount.textContent = `${state.items.length} ${state.items.length === 1 ? "item" : "items"}`;
+
+      if (state.items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "library-empty";
+        empty.textContent = "No pictures uploaded yet.";
+        libraryList.appendChild(empty);
+        return;
+      }
+
+      state.items.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "library-item";
+
+        const image = document.createElement("img");
+        image.className = "library-thumb";
+        image.src = item.url;
+        image.alt = "";
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.value = item.label;
+        labelInput.maxLength = 80;
+        labelInput.setAttribute("aria-label", `Label for ${item.file.name}`);
+        labelInput.addEventListener("input", () => {
+          item.label = labelInput.value;
+        });
+
+        const removeButton = document.createElement("button");
+        removeButton.className = "icon-button";
+        removeButton.type = "button";
+        removeButton.textContent = "×";
+        removeButton.title = `Remove ${item.file.name}`;
+        removeButton.setAttribute("aria-label", `Remove ${item.file.name}`);
+        removeButton.addEventListener("click", () => removeItem(item.id));
+
+        row.append(image, labelInput, removeButton);
+        libraryList.appendChild(row);
+      });
+    }
+
+    function updateRequirementMessage() {
+      const required = currentCellCount();
+      const available = state.items.length;
+
+      if (available < required) {
+        setStatus(`Upload at least ${required} pictures for the current ${rowsInput.value} × ${columnsInput.value} layout. You have ${available}.`, available > 0);
+      } else {
+        setStatus(`${available} pictures ready. Each sheet will use ${required} unique pictures.`);
+      }
+    }
+
+    function shuffledCopy(items) {
+      const copy = items.slice();
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[randomIndex]] = [copy[randomIndex], copy[index]];
+      }
+      return copy;
+    }
+
+    function chooseCardItems(count, usedSignatures) {
+      let selection = [];
+
+      for (let attempt = 0; attempt < 250; attempt += 1) {
+        selection = shuffledCopy(state.items).slice(0, count);
+        const signature = selection.map((item) => item.id).join("-");
+        if (!usedSignatures.has(signature)) {
+          usedSignatures.add(signature);
+          return selection;
+        }
+      }
+
+      return selection;
+    }
+
+    function createBingoCard(items, cardNumber, rows, columns, title, showLabels) {
+      const card = document.createElement("article");
+      card.className = `bingo-card${showLabels ? "" : " hide-labels"}`;
+
+      const heading = document.createElement("header");
+      heading.className = "card-heading";
+
+      const headingText = document.createElement("strong");
+      headingText.textContent = title || "Bingo";
+
+      const number = document.createElement("span");
+      number.className = "card-number";
+      number.textContent = `Sheet ${cardNumber}`;
+
+      heading.append(headingText, number);
+
+      const grid = document.createElement("div");
+      grid.className = "card-grid";
+      grid.style.setProperty("--rows", rows);
+      grid.style.setProperty("--cols", columns);
+
+      items.forEach((item, index) => {
+        const cell = document.createElement("div");
+        cell.className = "bingo-cell";
+
+        const columnPosition = (index % columns) + 1;
+        const rowPosition = Math.floor(index / columns) + 1;
+        if (columnPosition === columns) cell.style.borderRight = "0";
+        if (rowPosition === rows) cell.style.borderBottom = "0";
+
+        const imageWrap = document.createElement("div");
+        imageWrap.className = "cell-image-wrap";
+
+        const image = document.createElement("img");
+        image.className = "cell-image";
+        image.src = item.url;
+        image.alt = item.label || "Bingo picture";
+        image.draggable = false;
+
+        const label = document.createElement("div");
+        label.className = "cell-label";
+        label.textContent = item.label.trim() || " ";
+
+        imageWrap.appendChild(image);
+        cell.append(imageWrap, label);
+        grid.appendChild(cell);
+      });
+
+      card.append(heading, grid);
+      return card;
+    }
+
+    function generateSheets() {
+      const rows = Number(rowsInput.value);
+      const columns = Number(columnsInput.value);
+      const cellsPerCard = rows * columns;
+      const requestedCards = Number.parseInt(cardCountInput.value, 10);
+      const cardCount = Number.isFinite(requestedCards) ? Math.min(100, Math.max(1, requestedCards)) : 1;
+      const title = titleInput.value.trim() || "Bingo";
+      const showLabels = showLabelsInput.checked;
+
+      cardCountInput.value = String(cardCount);
+
+      if (state.items.length < cellsPerCard) {
+        setStatus(`Please upload at least ${cellsPerCard} pictures before generating these sheets.`, true);
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      const usedSignatures = new Set();
+      let currentPage = null;
+
+      for (let cardIndex = 0; cardIndex < cardCount; cardIndex += 1) {
+        if (cardIndex % 2 === 0) {
+          currentPage = document.createElement("section");
+          currentPage.className = "print-page";
+          currentPage.setAttribute("aria-label", `A4 page ${Math.floor(cardIndex / 2) + 1}`);
+          fragment.appendChild(currentPage);
+        }
+
+        const selectedItems = chooseCardItems(cellsPerCard, usedSignatures);
+        currentPage.appendChild(createBingoCard(
+          selectedItems,
+          cardIndex + 1,
+          rows,
+          columns,
+          title,
+          showLabels
+        ));
+      }
+
+      printArea.replaceChildren(fragment);
+      const pageCount = Math.ceil(cardCount / 2);
+      setStatus(`Generated ${cardCount} ${cardCount === 1 ? "sheet" : "sheets"} across ${pageCount} A4 ${pageCount === 1 ? "page" : "pages"}.`);
+    }
+
+    fileInput.addEventListener("change", (event) => addFiles(event.target.files));
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      uploadZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        uploadZone.classList.add("is-dragging");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      uploadZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        uploadZone.classList.remove("is-dragging");
+      });
+    });
+
+    uploadZone.addEventListener("drop", (event) => addFiles(event.dataTransfer.files));
+    generateButton.addEventListener("click", generateSheets);
+    printButton.addEventListener("click", () => window.print());
+    clearButton.addEventListener("click", clearAllItems);
+    rowsInput.addEventListener("change", updateRequirementMessage);
+    columnsInput.addEventListener("change", updateRequirementMessage);
+
+    window.addEventListener("beforeunload", () => {
+      state.items.forEach((item) => URL.revokeObjectURL(item.url));
+    });
+
+    renderLibrary();
+    updateRequirementMessage();
+  </script>
+</body>
+</html>
