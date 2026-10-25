@@ -101,16 +101,19 @@
 import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, query, where, serverTimestamp }
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig, COLLECTIONS } from "./firebase-config.js";
 
 const fbApp=initializeApp(firebaseConfig), auth=getAuth(fbApp), db=getFirestore(fbApp);
 const COL=COLLECTIONS.blackout;
 
+const shareId=new URLSearchParams(location.search).get('view');
+const sharedView=shareId!==null;
+let modeEvents=new AbortController(), modeVersion=0, redrawView=null;
 let user=null, saved=[];
 let T = {  // current template
-  id:null, name:'',
+  id:null, name:'', blackout:true, isPublic:false,
   image:'',       // base64
   labels:[],      // [{text}]
   zones:[],       // [{text, x, y, w, h}] — positions as % of image
@@ -123,7 +126,35 @@ let dragLabel=null, dragOffX=0, dragOffY=0;
 // Edit mode drag zone state
 let editDragZone=null, editDragType=null, editDragSX=0, editDragSY=0, editDragOX=0, editDragOY=0, editDragOW=0, editDragOH=0;
 
-onAuthStateChanged(auth, async u=>{user=u; if(u){await loadSaved();buildUI();}else buildLoginUI();});
+if(sharedView) loadSharedView();
+else onAuthStateChanged(auth, async u=>{
+  user=u;
+  if(u){try{await loadSaved();buildUI();}catch{buildLoginUI();toast('Could not load templates. Please try again.');}}
+  else buildLoginUI();
+});
+
+async function loadSharedView(){
+  try{
+    if(!shareId || shareId.includes('/'))throw new Error('Invalid link');
+    const snap=await getDoc(doc(db,COL,shareId));
+    if(!snap.exists() || snap.data().isPublic!==true)throw new Error('Unavailable');
+    T={...snap.data(),id:snap.id};mode='view';showAll=T.blackout===false;buildUI();
+  }catch{
+    document.getElementById('layout').textContent='This activity is unavailable or no longer shared. Ask the teacher for a new link.';
+  }
+}
+async function shareTemplate(){
+  const wasPublic=T.isPublic;T.isPublic=true;
+  if(!await saveTemplate()){T.isPublic=wasPublic;return;}
+  const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('view',T.id);
+  const field=document.getElementById('share-link');field.value=url.href;field.hidden=false;
+  try{await navigator.clipboard.writeText(url.href);toast('View link copied — anyone with it can play');}
+  catch{field.focus();field.select();toast('Copy the view link below');}
+}
+async function stopSharing(){
+  T.isPublic=false;
+  if(await saveTemplate())toast('Sharing stopped');else T.isPublic=true;
+}
 
 async function loadSaved(){
   const q=query(collection(db,COL),where('uid','==',user.uid));
@@ -132,27 +163,29 @@ async function loadSaved(){
   saved.sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0));
 }
 async function saveTemplate(){
-  if(!T.name.trim()){toast('Enter a template name');return;}
-  if(!T.image){toast('Upload an image first');return;}
+  if(sharedView || !user)return false;
+  if(!T.name.trim()){toast('Enter a template name');return false;}
+  if(!T.image){toast('Upload an image first');return false;}
   const id=T.id||(T.id='bo_'+Date.now());
   try{
-    await setDoc(doc(db,COL,id),{uid:user.uid,...T,updatedAt:serverTimestamp()},{merge:true});
-    await loadSaved();renderSidebar();toast('Saved ✓');
-  }catch{toast('Save failed — check firebase-config.js');}
+    await setDoc(doc(db,COL,id),{...T,uid:user.uid,blackout:T.blackout!==false,isPublic:T.isPublic===true,updatedAt:serverTimestamp()},{merge:true});
+  }catch{toast('Save failed — check your connection and Firebase rules');return false;}
+  try{await loadSaved();}catch{toast('Saved, but the template list could not refresh');}
+  renderSidebar();return true;
 }
 async function deleteTemplate(id){
   await deleteDoc(doc(db,COL,id));
-  if(T.id===id){T={id:null,name:'',image:'',labels:[],zones:[]};}
+  if(T.id===id){T={id:null,name:'',image:'',labels:[],zones:[],blackout:true,isPublic:false};}
   await loadSaved();renderSidebar();toast('Deleted');
 }
 function loadTemplate(t){
   T=JSON.parse(JSON.stringify(t));
-  viewPlaced={}; showAll=false;
+  viewPlaced={}; showAll=T.blackout===false;
   renderSidebar(); enterMode(mode);
 }
 
 const uid=()=>Math.random().toString(36).slice(2,8);
-const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
 function buildLoginUI(){
   document.getElementById('layout').innerHTML=`
@@ -169,9 +202,9 @@ function buildLoginUI(){
 }
 
 function buildUI(){
-  const u=user, init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
+  const u=user||{}, init=(u.displayName||'T').split(' ').map(n=>n[0]).join('').slice(0,2);
   document.getElementById('nav-right').innerHTML=`
-    <div class="avatar">${u.photoURL?`<img src="${u.photoURL}"/>`:`${init}`}</div>
+    ${sharedView?'':`<div class="avatar">${u.photoURL?`<img src="${esc(u.photoURL)}"/>`:esc(init)}</div>`}
     <a class="btn btn-sm" href="index.html">← Hub</a>`;
   document.getElementById('layout').innerHTML=`
 <div class="sidebar" id="sidebar"></div>
@@ -186,8 +219,12 @@ function buildUI(){
     <div class="label-sidebar" id="label-sidebar"></div>
   </div>
 </div>`;
-  document.querySelectorAll('[data-tab]').forEach(t=>t.addEventListener('click',()=>{ mode=t.dataset.tab; enterMode(mode); renderTabs(); }));
-  renderSidebar();
+  document.querySelectorAll('[data-tab]').forEach(t=>t.addEventListener('click',()=>{ mode=t.dataset.tab;viewPlaced={};showAll=T.blackout===false;enterMode(mode);renderTabs(); }));
+  if(sharedView){
+    document.getElementById('sidebar').remove();
+    document.getElementById('mode-tabs').textContent=T.name||'Shared activity';
+    document.getElementById('layout').style.gridTemplateColumns='1fr';
+  }else renderSidebar();
   enterMode(mode);
 }
 
@@ -202,6 +239,16 @@ function renderSidebar(){
 <div class="sbox"><h4>Template Name</h4>
   <div class="field"><input id="t-name" value="${esc(T.name)}" placeholder="e.g. Solar System"/></div>
   <button class="btn btn-gold btn-sm" id="btn-save-t" style="width:100%">💾 Save Template</button>
+</div>
+<div class="sbox"><h4>View settings</h4>
+  <label><input type="checkbox" id="blackout-enabled" ${T.blackout!==false?'checked':''}/> Enable blackout and torch</label>
+  <p style="font-size:.72rem;color:#777;margin-top:8px">Turn off to keep the image visible while students place labels.</p>
+</div>
+<div class="sbox"><h4>Share view</h4>
+  <p style="font-size:.72rem;color:#777;margin-bottom:8px">Anyone with the link can view and play without signing in. Your current activity will be saved.</p>
+  <button class="btn btn-gold btn-sm" id="btn-share">Copy view link</button>
+  ${T.isPublic?'<button class="btn btn-sm" id="btn-unshare">Stop sharing</button>':''}
+  <input id="share-link" aria-label="Shared view link" readonly hidden style="width:100%;margin-top:8px"/>
 </div>
 <div class="sbox"><h4>Image</h4>
   <label class="btn btn-sm" style="cursor:pointer;width:100%;justify-content:center">📷 Upload Image<input type="file" accept="image/*" id="img-upload" style="display:none"/></label>
@@ -225,8 +272,11 @@ function renderSidebar(){
   <div class="saved-list">${saved.length?saved.map(s=>`<div class="saved-row" data-load-t="${s.id}"><div style="flex:1"><div style="font-size:.8rem;font-weight:600">${esc(s.name)}</div><div style="font-size:.68rem;color:#aaa">${s.labels?.length||0} labels · ${s.zones?.length||0} zones</div></div><button class="btn btn-rose btn-sm" data-del-t="${s.id}">🗑</button></div>`).join(''):`<p style="color:#bbb;font-size:.76rem;text-align:center;padding:8px">None yet</p>`}</div>
 </div>`;
 
+  document.getElementById('blackout-enabled')?.addEventListener('change',e=>{T.blackout=e.target.checked;showAll=!T.blackout;enterMode(mode);});
+  document.getElementById('btn-share')?.addEventListener('click',shareTemplate);
+  document.getElementById('btn-unshare')?.addEventListener('click',stopSharing);
   document.getElementById('t-name')?.addEventListener('input',e=>T.name=e.target.value);
-  document.getElementById('btn-save-t')?.addEventListener('click',saveTemplate);
+  document.getElementById('btn-save-t')?.addEventListener('click',async()=>{if(await saveTemplate())toast('Saved ✓');});
   document.getElementById('img-upload')?.addEventListener('change',e=>{
     const f=e.target.files[0];if(!f)return;
     const r=new FileReader();r.onload=ev=>{T.image=ev.target.result;renderSidebar();enterMode(mode);};r.readAsDataURL(f);
@@ -249,7 +299,14 @@ function addLabel(){
 }
 
 /* ── ENTER MODE ── */
+function listenMode(target,type,handler,options={}){
+  target.addEventListener(type,handler,{...options,signal:modeEvents.signal});
+}
+
 function enterMode(m){
+  if(sharedView && m!=='view')return;
+  modeEvents.abort();modeEvents=new AbortController();
+  const version=++modeVersion;redrawView=null;editDragZone=null;
   const body=document.getElementById('canvas-body');if(!body)return;
   // Clear overlays
   document.getElementById('ctrl-overlay').innerHTML='';
@@ -265,6 +322,7 @@ function enterMode(m){
   }
   const img=new Image();
   img.onload=()=>{
+    if(version!==modeVersion)return;
     imgEl=img;
     if(m==='editor') runEditor();
     else runView();
@@ -316,8 +374,8 @@ function runEditor(){
 </div>`;
 
   // Drag labels from sidebar onto canvas
-  canvas.addEventListener('dragover',e=>e.preventDefault());
-  canvas.addEventListener('drop',e=>{
+  listenMode(canvas,'dragover',e=>e.preventDefault());
+  listenMode(canvas,'drop',e=>{
     e.preventDefault();
     const lbl=e.dataTransfer.getData('text/plain');if(!lbl)return;
     const rect=canvas.getBoundingClientRect();
@@ -335,7 +393,7 @@ function runEditor(){
   });
 
   // Zone drag on canvas (to reposition)
-  canvas.addEventListener('mousedown',e=>{
+  listenMode(canvas,'mousedown',e=>{
     const rect=canvas.getBoundingClientRect();
     const cx=(e.clientX-rect.left)*(canvas.width/rect.width);
     const cy=(e.clientY-rect.top)*(canvas.height/rect.height);
@@ -346,7 +404,7 @@ function runEditor(){
       }
     }
   });
-  window.addEventListener('mousemove',e=>{
+  listenMode(window,'mousemove',e=>{
     if(editDragZone===null)return;
     const rect=canvas.getBoundingClientRect();
     const cx=(e.clientX-rect.left)*(canvas.width/rect.width);
@@ -355,7 +413,7 @@ function runEditor(){
     T.zones[editDragZone].x=editDragOX+dx;T.zones[editDragZone].y=editDragOY+dy;
     draw();
   });
-  window.addEventListener('mouseup',()=>{if(editDragZone!==null){editDragZone=null;renderSidebar();}});
+  listenMode(window,'mouseup',()=>{if(editDragZone!==null){editDragZone=null;renderSidebar();}});
 }
 
 /* ── VIEW MODE (torch) ── */
@@ -364,8 +422,6 @@ function runView(){
   const body=document.getElementById('canvas-body');
   const ctx=canvas.getContext('2d');
   scaleToFit();
-  showAll=false;
-  viewPlaced={};
 
   // Build label sidebar (draggable labels)
   const ls=document.getElementById('label-sidebar');
@@ -376,16 +432,16 @@ function runView(){
   document.getElementById('ctrl-overlay').innerHTML=`
 <div class="torch-ctrl">
   <span>🔦</span>
-  <input type="range" id="torch-size" min="40" max="250" value="${torchRadius}" style="width:90px"/>
+  <input type="range" aria-label="Torch size" ${showAll?'disabled':''} id="torch-size" min="40" max="250" value="${torchRadius}" style="width:90px"/>
   <span id="torch-size-lbl" style="min-width:30px">${torchRadius}px</span>
-  <button class="btn btn-sm" id="toggle-reveal" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2)">${showAll?'Hide':'Reveal All'}</button>
+  <button class="btn btn-sm" id="toggle-reveal" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.2)">${showAll?'Enable blackout':'Turn off blackout'}</button>
 </div>`;
   document.getElementById('torch-size')?.addEventListener('input',e=>{torchRadius=+e.target.value;document.getElementById('torch-size-lbl').textContent=e.target.value+'px';drawView();});
-  document.getElementById('toggle-reveal')?.addEventListener('click',()=>{showAll=!showAll;document.getElementById('toggle-reveal').textContent=showAll?'Hide':'Reveal All';if(showAll){const ls=document.getElementById('label-sidebar');ls.className='label-sidebar open';renderViewLabels(ls);}drawView();});
+  document.getElementById('toggle-reveal')?.addEventListener('click',()=>{showAll=!showAll;document.getElementById('torch-size').disabled=showAll;document.getElementById('toggle-reveal').textContent=showAll?'Enable blackout':'Turn off blackout';if(showAll){const ls=document.getElementById('label-sidebar');ls.className='label-sidebar open';renderViewLabels(ls);}drawView();});
 
   // Mouse/touch for torch
-  canvas.addEventListener('mousemove',e=>{const rect=canvas.getBoundingClientRect();torchX=(e.clientX-rect.left)*(canvas.width/rect.width);torchY=(e.clientY-rect.top)*(canvas.height/rect.height);drawView();});
-  canvas.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];const rect=canvas.getBoundingClientRect();torchX=(t.clientX-rect.left)*(canvas.width/rect.width);torchY=(t.clientY-rect.top)*(canvas.height/rect.height);drawView();},{passive:false});
+  listenMode(canvas,'mousemove',e=>{const rect=canvas.getBoundingClientRect();torchX=(e.clientX-rect.left)*(canvas.width/rect.width);torchY=(e.clientY-rect.top)*(canvas.height/rect.height);drawView();});
+  listenMode(canvas,'touchmove',e=>{e.preventDefault();const t=e.touches[0];const rect=canvas.getBoundingClientRect();torchX=(t.clientX-rect.left)*(canvas.width/rect.width);torchY=(t.clientY-rect.top)*(canvas.height/rect.height);drawView();},{passive:false});
 
   // Drop zones (absolutely positioned over canvas)
   function placeDropZones(){
@@ -424,6 +480,7 @@ function runView(){
     }
     placeDropZones();
   }
+  redrawView=drawView;
   drawView();
 }
 
@@ -447,7 +504,7 @@ function renderViewLabels(ls){
       const el=document.elementFromPoint(e.changedTouches[0].clientX,e.changedTouches[0].clientY);
       const dz=el?.closest('[data-zone]');
       if(dz){
-        if(dragLabel===dz.dataset.zone){viewPlaced[dragLabel]=true;const ls2=document.getElementById('label-sidebar');renderViewLabels(ls2);const body=document.getElementById('canvas-body');body.querySelectorAll('.dropzone,.placed-label').forEach(el=>el.remove());runView();}
+        if(dragLabel===dz.dataset.zone){viewPlaced[dragLabel]=true;const ls2=document.getElementById('label-sidebar');renderViewLabels(ls2);redrawView?.();checkAllDone();}
         else{toast('Not quite!');dz.classList.add('wrong');setTimeout(()=>dz.classList.remove('wrong'),600);}
       }
       dragLabel=null;
@@ -457,8 +514,9 @@ function renderViewLabels(ls){
 
 function checkAllDone(){
   const allDone=T.zones.every(z=>viewPlaced[z.text]);
-  if(allDone){
-    setTimeout(()=>{showAll=true;const cv=document.getElementById('main-canvas');const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(imgEl,imgOX,imgOY,imgW,imgH);toast('🎉 All labels placed correctly!');},300);
+  if(allDone && T.zones.length){
+    const version=modeVersion;
+    setTimeout(()=>{if(mode!=='view'||version!==modeVersion)return;showAll=true;document.getElementById('toggle-reveal').textContent='Enable blackout';document.getElementById('torch-size').disabled=true;const cv=document.getElementById('main-canvas');const ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(imgEl,imgOX,imgOY,imgW,imgH);toast('🎉 All labels placed correctly!');},300);
   }
 }
 
