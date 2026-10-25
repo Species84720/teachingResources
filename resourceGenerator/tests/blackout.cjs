@@ -29,6 +29,7 @@ const assert=require('node:assert/strict');
  await page.click('#toggle-reveal');assert.equal(await page.evaluate(()=>test.get().showAll),false);
  await page.evaluate(()=>{const dt=new DataTransfer();dt.setData('text/plain','One');document.querySelector('[data-zone="One"]').dispatchEvent(new DragEvent('drop',{dataTransfer:dt}));});
  assert.equal(await page.locator('.dropzone.filled').count(),1);
+ assert.equal(await page.locator('.dropzone.filled').evaluate(el=>getComputedStyle(el).fontSize),'48px');
  await page.setViewportSize({width:900,height:650});await page.waitForSelector('.dropzone.filled');
  assert.equal(await page.evaluate(()=>test.get().viewPlaced.One),true);
  assert.equal(await page.evaluate(()=>writes.length),0);
@@ -51,6 +52,35 @@ const assert=require('node:assert/strict');
  await page.evaluate(()=>test.shareTemplate());assert.equal(await page.evaluate(()=>writes.at(-1)[1].isPublic),true);
  assert.match(await page.inputValue('#share-link'),/\?view=test$/);
  await page.evaluate(()=>test.stopSharing());assert.equal(await page.evaluate(()=>writes.at(-1)[1].isPublic),false);
+ // Large labels, a sticky activity, and an independently scrollable label bank.
+ const manyLabels=Array.from({length:24},(_,i)=>({text:'Part '+(i+1)}));
+ await page.evaluate(t=>test.loadTemplate(t),{...fixture,labels:manyLabels,zones:[]});
+ await page.click('[data-tab="editor"]');await page.waitForSelector('[data-lbl="Part 1"]');
+ assert.equal(await page.locator('.label-item').first().evaluate(el=>getComputedStyle(el).fontSize),'48px');
+ const initialPanel=await page.locator('#label-sidebar').boundingBox();
+ await page.evaluate(()=>window.scrollTo(0,500));
+ const scrolledPanel=await page.locator('#label-sidebar').boundingBox();
+ assert.ok(Math.abs(initialPanel.y-scrolledPanel.y)<2,'label bank follows page scrolling');
+ const panelMetrics=await page.locator('#label-sidebar').evaluate(el=>{
+   el.scrollTop=200;return {scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,height:el.clientHeight,bottom:el.getBoundingClientRect().bottom};
+ });
+ assert.ok(panelMetrics.scrollTop>0);assert.ok(panelMetrics.scrollHeight>panelMetrics.height);
+ assert.ok(panelMetrics.bottom<=await page.evaluate(()=>innerHeight));
+ const canvasBox=await page.locator('#main-canvas').boundingBox();
+ assert.ok(canvasBox.x+canvasBox.width<=scrolledPanel.x+1,'image is clear of the label bank');
+ await page.locator('#label-sidebar').evaluate(el=>el.scrollTop=0);
+ await page.locator('[data-lbl="Part 1"]').dragTo(page.locator('#main-canvas'),{targetPosition:{x:canvasBox.width/2,y:canvasBox.height/2}});
+ assert.equal(await page.locator('[data-lbl="Part 1"]').count(),0,'placed label disappears immediately');
+ assert.equal(await page.evaluate(()=>test.get().T.zones.length),1);
+ assert.equal(await page.locator('.label-item').count(),23);
+ await page.locator('[data-del-zone="0"]').click();
+ await page.waitForSelector('[data-lbl="Part 1"]');
+ assert.equal(await page.locator('.label-item').count(),24,'deleted zone returns its label to the bank');
+ await page.setViewportSize({width:540,height:800});await page.waitForTimeout(100);
+ assert.equal(await page.locator('.label-item').first().evaluate(el=>getComputedStyle(el).fontSize),'32px');
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'narrow layout has no horizontal page overflow');
+ await page.setViewportSize({width:900,height:650});await page.evaluate(()=>window.scrollTo(0,0));
+ await page.evaluate(t=>test.loadTemplate(t),fixture);
  // A large PNG is optimized both on upload and when saving an existing activity.
  const large=await page.evaluate(()=>{
    const canvas=document.createElement('canvas');canvas.width=1400;canvas.height=1000;
@@ -88,7 +118,7 @@ const assert=require('node:assert/strict');
  assert.equal(await page.evaluate(()=>test.saveTemplate()),true);
  assert.equal(await page.locator('#save-error').isVisible(),false);
  assert.deepEqual(errors,[]);
- console.log('PASS: sharing, blackout, mouse/touch placement, resize progress, large-image save/upload compression, aspect ratio/zone preservation, visible save errors and retry; no browser errors.');
+ console.log('PASS: large labels, sticky/scrollable label bank, editor placement removal/return, narrow layout, sharing, blackout, mouse/touch placement, resize progress, image compression and save errors; no browser errors.');
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1);});
 
