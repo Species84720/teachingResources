@@ -51,6 +51,10 @@ export const COLLECTIONS = {
       match /spotter/{docId} {
         allow read: if resource.data.isPublic == true;
       }
+      // Shared blackout activities: direct-link reads only, no public listing or writes.
+      match /blackout/{docId} {
+        allow get: if resource.data.isPublic == true;
+      }
     }
   }
 */
